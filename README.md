@@ -1,10 +1,14 @@
-# ParaBlade
+<p style="margin-bottom:1cm;"> </p>
+<p align="center">
+        <img src="./docs/figures/ParaBladeLogo.png"/> 
+</p>
+<p style="margin-bottom:1cm;"> </p>
 
 
-ParaBlade is an open-source Pyhon library for the parametrization of turbomachinery blades intended for shape optimization using gradient-based algorithms.
+ParaBlade is an open-source Python library for the parametrization of turbomachinery blades design using gradient-based optimization algorithms.
 
 
-![python 3.2](https://img.shields.io/badge/version-latest-blue.svg) ![python 3.2](https://img.shields.io/badge/python-3.6.3-blue.svg) ![platform Linux,_MacOs,_Win64](https://img.shields.io/badge/platform-Linux,_macos,_win64-blue.svg)
+![python 3.2](https://img.shields.io/badge/version-latest-blue.svg) ![python 3.2](https://img.shields.io/badge/python-3.6.3-blue.svg) ![platform Linux,_MacOs,_Win64](https://img.shields.io/badge/platform-Linux,_MacOs,_Win64-blue.svg)
 
 
 ## Description
@@ -109,16 +113,16 @@ sudo apt-get install python-setuptools python-dev build-essential
 ```
 
 ### MatPlotLib
-Use pip3 to install CoolProp. For more information on MatplotLib visit [here].  
+Use pip3 to install matplotlib. For more information on matplotlib visit [here].  
 [![Link matplotlib](https://img.shields.io/badge/Link-matplotlib-red.svg)](https://matplotlib.org/)
-  
+
 ```
 sudo pip3 install matplotlib
 ```
 ### NumPy
-Use pip3 to install numpy. For more information on SciPy visit   
+Use pip3 to install numpy. For more information on numpy visit   
 [![Link matplotlib](https://img.shields.io/badge/Link-numpy-red.svg)](https://www.numpy.org/).
-  
+
 ```
 sudo pip3 install numpy
 ```
@@ -126,17 +130,17 @@ sudo pip3 install numpy
 ### SciPy
 Use pip3 to install CoolProp. For more information on SciPy visit [here]  
 [![Link matplotlib](https://img.shields.io/badge/Link-scipy-red.svg)](https://www.scipy.org/).
-  
+
 ```
 sudo pip3 install scipy
 ```
 
 ### Slack Client
-If you wish to get notification on slack for your optimizaiton. Please install the slack client else, just continue using
+If you wish to get notification on slack for your optimization. Please install the slack client else, just continue using
 the code as it is. It would have no influence.
 Use pip3 to install slack-client. For more information on slack-client visit [here].  
 [![Link matplotlib](https://img.shields.io/badge/Link-slackclient-red.svg)]()
-  
+
 ```
 sudo pip3 install slackclient
 ```
@@ -145,14 +149,14 @@ Also add
 ```
 export SLACK_API_TOKEN="<slack legacy-token>"
 ```
-in your ~/.bashrc file
+in your ~/.bashrc file (~/.bash_profile for Mac users)
 
 To generate a slack legacy-tokens please visit   
 [![Link matplotlib](https://img.shields.io/badge/Link-legacytoken-red.svg)](https://api.slack.com/custom-integrations/legacy-tokens)
 
 ### TecPlot
 Use pip3 to install pytecplot. Information on installation is available below.  
-  
+
 ```
 sudo pip3 install pytecplot
 ```
@@ -165,21 +169,7 @@ Run the command below
 ```
 RunMe.sh
 ```
-and follow the instructions... This should load MakeBlade.py in your working environment. 
-
-# Usage
-### TEST CASES
-Go to any of the cases in TestCases Folder and run:
-
-### [How to install SU2 ?](docs/SU2.md)
-
-### [How to match a Blade ?](docs/Match.md)
-
-### [How to do shape optimization ?](docs/ShapeOptimization.md)
-
-# Branches
-1. Master
-2. feature_blade_matching
+and follow the instructions to add the parablade bin files in your terminal environment.
 
 # Developers
 The tool was developed in Power & Propulsion Group of TU Delft. The principle developers are:  
@@ -187,20 +177,9 @@ The tool was developed in Power & Propulsion Group of TU Delft. The principle de
 2. **Nitish Anand** - PhD Researcher, TU Delft.    
 
 [![Link MailTo](https://img.shields.io/badge/MailTo-developers-blue.svg)](mailto:roberto.agromayor@ntnu.no;n.anand@tudelft.nl?subject=ParaBlade:Query)
+
 # Acknowledgements
 **Matteo Pini** - Assistant Prof., Power and Propulsion, TU Delft.     
 
 # Citations
-The details of the work has been published in the following documents:  
 
-# Licence
-
-# Standards
-PEP 8
-Documentation Standard: (Roberto)
-  
-# Some Developer guidelines
-
-1. 
-
-*Author: Nitish Anand*
