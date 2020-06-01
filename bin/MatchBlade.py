@@ -1,0 +1,100 @@
+#!/usr/bin/env python3
+###############################################################################################
+#                    ____                 ____  _           _                                 #
+#                   |  _ \ __ _ _ __ __ _| __ )| | __ _  __| | ___                            #
+#                   | |_) / _` | '__/ _` |  _ \| |/ _` |/ _` |/ _ \                           #
+#                   |  __/ (_| | | | (_| | |_) | | (_| | (_| |  __/                           #
+#                   |_|   \__,_|_|  \__,_|____/|_|\__,_|\__,_|\___|                           #
+#                                                                                             #
+###############################################################################################
+
+################################# FILE NAME: MatchBlade.py ####################################
+#=============================================================================================#
+# author: Roberto, Nitish Anand                                                               |
+#    :PhD Candidates,                                                                         |
+#    :Power and Propulsion, Energy Technology,                                                |
+#    :NTNU, TU Delft,                                                                         |
+#    :The Netherlands                                                                         |
+#                                                                                             |
+#                                                                                             |
+# Description:                                                                                |
+#                                                                                             |
+#=============================================================================================#
+
+#---------------------------------------------------------------------------------------------#
+# Importing general packages
+#---------------------------------------------------------------------------------------------#
+import sys
+import os
+import time
+import pdb
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+
+#---------------------------------------------------------------------------------------------#
+# Setting Environment
+#---------------------------------------------------------------------------------------------#
+BLADE_HOME = os.environ["BLADE_HOME"]
+sys.path.append(BLADE_HOME+'/src/')
+sys.path.append(BLADE_HOME+'/common/')
+
+#---------------------------------------------------------------------------------------------#
+# Importing ParaBlade classes and functions
+#---------------------------------------------------------------------------------------------#
+from common import PrintBanner
+from config import *
+from blade_3D import Blade3D
+from blade_plot import BladePlot
+from blade_match import BladeMatch
+from blade_output import BladeOutput
+
+#---------------------------------------------------------------------------------------------#
+# Print ParaBlade Banner
+#---------------------------------------------------------------------------------------------#
+PrintBanner()
+
+#---------------------------------------------------------------------------------------------#
+# Initializing the DIR and load the configuration file
+#---------------------------------------------------------------------------------------------#
+DIR = os.getcwd() + '/'
+
+try:
+    INFile = DIR + sys.argv[-1]
+except:
+    INFile = DIR + 'blade.cfg'      # Default File name
+
+try:
+    IN = ReadUserInput(INFile)
+except:
+    raise Exception('\n\n\n''Something went wrong when reading the configuration file,exiting the program...'
+                    '\n\nTo call MakeBlade.py from terminal type:'
+                    '\n\tMakeBlade.py <configuration file name>')
+
+#---------------------------------------------------------------------------------------------#
+# Matching of a prescribed blade geometry
+#---------------------------------------------------------------------------------------------#
+# Set plotting options
+options = {'view_xy'            : 'yes',    # 2D Recommended
+           'view_xR'            : 'yes',     # 3D Recommended
+           'view_yz'            : 'yes',     # 3D Optional
+           'view_3D'            : 'yes',     # 3D Recommended
+           'error_distribution' : 'yes'}
+
+# Create BladeMatch object
+matched_blade_object = BladeMatch(IN, coarseness=1, plot_options=options)
+
+# Match the blade manually (interactive mode)
+matched_blade_object.match_blade(matching_mode='manual')
+
+# Match the blade automatically (optimization mode)
+matched_blade_object.match_blade(matching_mode='DVs')
+
+# # Can be used instead of the above command if we need only UV update
+# # Match the blade (u,v) parametrization (rematch a mesh generated by ParaBlade)
+# matched_blade_object.match_blade(matching_mode='uv')
+
+#---------------------------------------------------------------------------------------------#
+# End of file
+#---------------------------------------------------------------------------------------------#
+
