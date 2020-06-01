@@ -149,7 +149,7 @@ Also add
 ```
 export SLACK_API_TOKEN="<slack legacy-token>"
 ```
-in your ~/.bashrc file (~/.bash_profile for Mac users)
+in your \~/.bashrc file (\~/.bash_profile for Mac users)
 
 To generate a slack legacy-tokens please visit   
 [![Link matplotlib](https://img.shields.io/badge/Link-legacytoken-red.svg)](https://api.slack.com/custom-integrations/legacy-tokens)
