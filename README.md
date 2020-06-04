@@ -171,7 +171,7 @@ RunMe.sh
 ```
 and follow the instructions to add the parablade bin files in your terminal environment.
 
-# Developers
+# Developing team
 
 Parablade was developed by 
 
