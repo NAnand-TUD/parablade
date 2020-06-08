@@ -176,14 +176,14 @@ and follow the instructions to add the parablade bin files in your terminal envi
 Parablade was developed by 
 
 1. [**Roberto Agromayor**](https://www.ntnu.edu/employees/roberto.agromayor) - PhD Researcher, Norwegian University of Science and Technology (NTNU)  
-2. [**Nitish Anand**](https://www.tudelft.nl/staff/n.anand/) - PhD Researcher, Delft University of Technology (TUD) 
+2. [**Nitish Anand**](https://www.tudelft.nl/staff/n.anand/) - PhD Researcher, Propulsion & Power, Aerospace Engineering, Delft University of Technology (TUD) 
 
 Feel free to drop us and e-mail if you have questions about the code or you have a bug to report. We would also love to hear about your experiences with Parablade in general.
 [![Link MailTo](https://img.shields.io/badge/MailTo-developers-blue.svg)](mailto:roberto.agromayor@ntnu.no;n.anand@tudelft.nl?subject=ParaBlade:Query)
 
 We would also like to acknowledge the following persons for their support during the conceptualization and developtment of Parablade
 
-3. [**Matteo Pini**](https://www.tudelft.nl/en/staff/m.pini/?no_cache=1&cHash=) - Assistant Professor, Faculty of Aerospace Engineering, Delft University of Technology (TUD)
+3. [**Matteo Pini**](https://www.tudelft.nl/en/staff/m.pini/?no_cache=1&cHash=) - Assistant Professor, Propulsion & Power, Aerospace Engineering, Delft University of Technology (TUD)
 4. [**Jens-Dominik Müller**](https://www.sems.qmul.ac.uk/staff/j.mueller) - Reader, School of Engineering and Materials Science, Queen Mary University of London (QMUL)
 5. [**Lars O. Nord**](https://www.ntnu.edu/employees/lars.nord) - Associate Professor, Department of Energy and Process Engineering, Norwegian University of Science and Technology (NTNU)
 
