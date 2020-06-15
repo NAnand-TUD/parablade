@@ -8,7 +8,13 @@
 ParaBlade is an open-source Python library for the parametrization of turbomachinery blades design using gradient-based optimization algorithms.
 
 
-![python 3.2](https://img.shields.io/badge/version-latest-blue.svg) ![python 3.2](https://img.shields.io/badge/python-3.6.3-blue.svg) ![platform Linux,_MacOs,_Win64](https://img.shields.io/badge/platform-Linux,_MacOs,_Win64-blue.svg) [![DOI](https://zenodo.org/badge/268081609.svg)](https://zenodo.org/badge/latestdoi/268081609)
+![python 3.2](https://img.shields.io/badge/version-latest-blue.svg)
+
+![python 3.2](https://img.shields.io/badge/python-3.6.3-blue.svg) 
+
+![platform Linux,_MacOs,_Win64](https://img.shields.io/badge/platform-Linux,_MacOs,_Win64-blue.svg) 
+
+[![DOI](https://zenodo.org/badge/268081609.svg)](https://zenodo.org/badge/latestdoi/268081609)
 
 
 ## Description
