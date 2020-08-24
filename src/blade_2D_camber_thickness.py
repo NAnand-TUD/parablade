@@ -88,9 +88,9 @@ class Blade2DCamberThickness:
             section_variables[i] = section_variables[i].item()
 
         # Load the blade section variables
-        self.stagger = section_variables["stagger"]
-        self.theta_in = section_variables["theta_in"]
-        self.theta_out = section_variables["theta_out"]
+        self.stagger = section_variables["stagger"] * np.pi / 180
+        self.theta_in = section_variables["theta_in"] * np.pi / 180
+        self.theta_out = section_variables["theta_out"] * np.pi / 180
         self.radius_in = section_variables["radius_in"]
         self.radius_out = section_variables["radius_out"]
         self.dist_in = section_variables["dist_in"]

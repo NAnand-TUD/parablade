@@ -317,12 +317,6 @@ class Blade3D:
         for k in self.DVs_names:
             self.DVs_control_points[k] = IN[k]
 
-        # Convert angle design variables from degrees to radians (be careful about converting the angle twice!)
-        for k in self.DVs_names:
-            for i in range(len(self.IN[k])):
-                if k in ['theta_in', 'theta_out', 'stagger', 'wedge_in', 'wedge_out']:
-                    self.DVs_control_points[k][i] = self.DVs_control_points[k][i] * np.pi / 180
-
         # Adjust the hub and shroud control points so that the shared points match exactly
         self.DVs_control_points['x_hub'] = [IN['x_leading'][0]] + IN['x_hub'] + [IN['x_trailing'][0]]
         self.DVs_control_points['z_hub'] = [IN['z_leading'][0]] + IN['z_hub'] + [IN['z_trailing'][0]]
@@ -758,8 +752,6 @@ class Blade3D:
                     surface_sensitivity[key + '_' + str(number)] = (C_2 - C_1) / (2 * step)
 
                 elif method == 'complex_step':
-                    # print(key, number)
-                    # pdb.set_trace()
                     self.DVs_control_points[key][number] = control_points[key][number] + step * 1j
                     self.make_surface_interpolant()
                     C = self.get_surface_coordinates(u, v)

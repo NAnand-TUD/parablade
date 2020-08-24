@@ -94,11 +94,11 @@ class Blade2DConnectingArcs:
             section_variables[i] = section_variables[i].item()
 
         # Declare input variables as instance variables
-        self.stagger = section_variables["stagger"]
-        self.theta_in = section_variables["theta_in"]
-        self.theta_out = section_variables["theta_out"]
-        self.wedge_in = section_variables["wedge_in"]
-        self.wedge_out = section_variables["wedge_out"]
+        self.stagger = section_variables["stagger"] * np.pi / 180
+        self.theta_in = section_variables["theta_in"] * np.pi / 180
+        self.theta_out = section_variables["theta_out"] * np.pi / 180
+        self.wedge_in = section_variables["wedge_in"] * np.pi / 180
+        self.wedge_out = section_variables["wedge_out"] * np.pi / 180
         self.radius_in = section_variables["radius_in"]
         self.radius_out = section_variables["radius_out"]
         self.dist_1 = section_variables["dist_1"]

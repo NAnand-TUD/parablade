@@ -76,9 +76,9 @@ except:
 #---------------------------------------------------------------------------------------------#
 # Set plotting options
 options = {'view_xy'            : 'yes',    # 2D Recommended
-           'view_xR'            : 'yes',     # 3D Recommended
-           'view_yz'            : 'yes',     # 3D Optional
-           'view_3D'            : 'yes',     # 3D Recommended
+           'view_xR'            : 'no',     # 3D Recommended
+           'view_yz'            : 'no',     # 3D Optional
+           'view_3D'            : 'no',     # 3D Recommended
            'error_distribution' : 'yes'}
 
 # Create BladeMatch object

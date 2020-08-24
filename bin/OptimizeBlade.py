@@ -308,31 +308,81 @@ class ShapeOptimization:
         self.variable_values    = [None] * self.N_variables         # List that contains initial variable values
         len_values              = [None] * self.N_variables         # List containing length for each DV
 
-        for k in range(self.N_variables):
-            self.variable_values[k] = (self.CAD_CONFIG_IN[self.variable_names[k]])
-            len_values[k]           = len(self.variable_values[k])
+        # for k in range(self.N_variables):
+        #     self.variable_values[k] = (self.CAD_CONFIG_IN[self.variable_names[k]])
+        #     len_values[k]           = len(self.variable_values[k])
+        #
+        # # Initialize dimensionless initial point Numpy array
+        # my_x0   = np.zeros([sum(len_values)])
+        # i       = 0
+        # for k in range(self.N_variables):
+        #     prov                     = np.array(self.variable_values[k], dtype='float')
+        #     my_x0[i:(i+len(prov))]   = prov
+        #     i += len(prov)
+        #
+        # # Set bounds for DVs
+        # # TODO: bounds like in blade_match.py
+        # h = 0.4
+        # bds = [None]*len(my_x0)
+        # for i in range(len(my_x0)):
+        #     bds[i] = (1-h, 1+h)
 
-        # Initialize dimensionless initial point Numpy array
-        my_x0   = np.zeros([sum(len_values)])
-        i       = 0
-        for k in range(self.N_variables):
-            prov                     = np.array(self.variable_values[k], dtype='float')
-            my_x0[i:(i+len(prov))]   = prov
-            i += len(prov)
 
-        # Set bounds for DVs
-        # TODO: bounds like in blade_match.py
-        h = 0.4
-        bds = [None]*len(my_x0)
-        for i in range(len(my_x0)):
-            bds[i] = (1-h, 1+h)
+        # Initialize design variables from the fitter CAD-parametrization config file.
+        DVs_values = []
+        for name in self.variable_names:
+            for index in range(len(self.CAD_CONFIG_IN[name])):
+                DVs_values.append(self.CAD_CONFIG_IN[name])
+        DVs_values = np.asarray(DVs_values).flatten()
+
+
+        # Initialize design variables bounds
+        reference_length = 1.00
+        DVs_bounds = []
+        for name in self.variable_names:
+            for index in range(len(self.CAD_CONFIG_IN[name])):
+
+                if name in ['x_leading', 'y_leading', 'z_leading', 'x_trailing', 'z_trailing', 'x_hub', 'z_hub', 'x_shroud', 'z_shroud']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index] - reference_length, self.CAD_CONFIG_IN[name][index] + reference_length))
+
+                elif name in ['stagger']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index]-2.50, self.CAD_CONFIG_IN[name][index]+2.50))
+
+                elif name in ['theta_in']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index]-5.00, self.CAD_CONFIG_IN[name][index]+5.00))
+
+                elif name in ['theta_out']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index]-5.00, self.CAD_CONFIG_IN[name][index]+5.00))
+
+                elif name in ['wedge_in', 'wedge_out']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index]-2.00, self.CAD_CONFIG_IN[name][index]+5.00))
+
+                elif name in ['dist_in', 'dist_out']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index]-0.10, self.CAD_CONFIG_IN[name][index]+0.10))
+
+                elif name in ['dist_1', 'dist_2', 'dist_3', 'dist_4']:
+                    DVs_bounds.append((self.CAD_CONFIG_IN[name][index]-0.10, self.CAD_CONFIG_IN[name][index]+0.10))
+
+                elif name in ['radius_in', 'radius_out']:
+                    DVs_bounds.append((0.0065, 0.250))
+
+                elif name in ['thickness_upper_1', 'thickness_upper_2', 'thickness_upper_3',
+                              'thickness_upper_4', 'thickness_upper_5', 'thickness_upper_6',
+                              'thickness_lower_1', 'thickness_lower_2', 'thickness_lower_3',
+                              'thickness_lower_4', 'thickness_lower_5', 'thickness_lower_6']:
+                    DVs_bounds.append((0.0150, 0.250))
+
+
+        # for i in range(len(DVs_values)):
+        #     print(DVs_bounds[i][0], DVs_values[i], DVs_bounds[i][1])
+        # pdb.set_trace()
 
         # Contrainted or unconstrained optimization options
         if (self.IN['OPT_CONSTRAIN']=='NONE'):
-            R = fmin_slsqp(func= self.get_objective_function, x0=my_x0, fprime=self.get_sens_objective, bounds=None, acc=1e-14, iter=20, disp=True)
+            R = fmin_slsqp(func= self.get_objective_function, x0=DVs_values, fprime=self.get_sens_objective, bounds=DVs_bounds, acc=1e-14, iter=100, disp=True)
         else:
-            R = fmin_slsqp(func= self.get_objective_function, x0=my_x0, f_ieqcons=self.get_constrain,
-                           fprime_ieqcons=self.get_sens_constrain, fprime=self.get_sens_objective, bounds=None,  acc=1e-14, iter=20, iprint=2,
+            R = fmin_slsqp(func= self.get_objective_function, x0=DVs_values, f_ieqcons=self.get_constrain,
+                           fprime_ieqcons=self.get_sens_constrain, fprime=self.get_sens_objective, bounds=DVs_bounds,  acc=1e-14, iter=100, iprint=2,
                            disp=True)
         self.OPT_HIST_FILE.close()
 

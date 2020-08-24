@@ -274,7 +274,7 @@ class BladeMatch:
                 solution = minimize(fun=self.my_objective_function,
                                     x0=np.asarray([my_u0[k], my_v0[k]]),
                                     args=('uv_parametrization', i),
-                                    method='SLSQP',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
+                                    method='L-BFGS-B',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
                                     jac=None,
                                     # hess=None,
                                     # hessp=None,
@@ -532,7 +532,7 @@ class BladeMatch:
         if self.NDIM == 2:
             file.write("\"index\",\t\"x_prescribed\",\t\"y_prescribed\",\t\"x_match\",\t\"y_match\",\t\"u\",\t\"v\"\n")
             for i in range(self.N_points):
-                file.write('%i,,\t%+.15e,,\t%+.15e,,\t%+.15e,,\t%+.15e,,\t%.15f,,\t%.15f\n' %
+                file.write('%i,\t%+.15e,\t%+.15e,\t%+.15e,\t%+.15e,\t%.15f,\t%.15f\n' %
                            (self.coordinates_prescribed[0, i],          # Mesh point index
                             self.coordinates_prescribed[1, i],          # Prescribed x coordinate (axial)
                             self.coordinates_prescribed[2, i],          # Prescribed y coordinate (tangential)
@@ -684,7 +684,7 @@ class BladeMatch:
             self.points_1m.set_color("k")
             self.points_1m.set_linewidth(0.50)
             self.points_1m.set_label('Blade matched')
-            
+
 
         if self.plot_options['view_xR'] == 'yes':
 
