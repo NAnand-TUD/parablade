@@ -24,6 +24,7 @@ from scipy import interpolate
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm 
+import inspect
 
 #---------------------------------------------------------------------------------------------#
 # Setting Environment
@@ -36,6 +37,7 @@ sys.path.append(BLADE_HOME+'/common/')
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
 from common import PrintBanner
+from common import sort_2d_list
 from config import *
 from blade_3D import Blade3D
 from blade_plot import BladePlot
@@ -84,6 +86,8 @@ def NACA_4_digit(t,m,p,c,Npoints=500):
         p = 0.0001
     elif p > 1.:
         p = 1.
+    elif p == 0.:
+        raise ValueError('Maximum camber location p cannot be 0')
         
     if c < 0.:
         c = 1.
@@ -91,7 +95,7 @@ def NACA_4_digit(t,m,p,c,Npoints=500):
     if m<0.:
         m = 0.
     
-    x = np.linspace(1.e-3,1.,Npoints)
+    x = np.linspace(5.e-3,1.,Npoints)
     x_up = np.zeros(Npoints)
     x_dw = np.zeros(Npoints)
     y_up = np.zeros(Npoints)
@@ -145,10 +149,35 @@ def NACA_4_digit(t,m,p,c,Npoints=500):
     xc = x*c
     yc = yc*c
     
+    
+    # Check for strictly increasing sets of points
+    # def checkIfStriclyIncreasing(L):
+    #     return all(x<y for x, y in zip(L, L[1:]))
+    
+    # def fixCoordinates(x,y):
+    
+    #     if checkIfStriclyIncreasing(x)==False:
+    #         lst = []
+    #         for i in range(len(x)):
+    #             lst.append([x[i],y[i]])
+                
+    #         sort_2d_list(lst)
+            
+    #         for i in range(len(x)):
+    #             x[i] = lst[i][0]
+    #             y[i] = lst[i][1]
+            
+    #     return x,y
+        
+       
+   
+    # x_up,y_up = fixCoordinates(x_up,y_up)
+    # x_dw,y_dw = fixCoordinates(x_up,y_up)      
+    
     return x_up,y_up,x_dw,y_dw,xc,yc,th,dth,x_mxth
 
 
-def NACA_validation(t,m,p,c,Npoints=500):
+def NACA_validation(t,m,p,c,file,Npoints=500):
     
     #########################
     # Generate a NACA profile
@@ -175,11 +204,10 @@ def NACA_validation(t,m,p,c,Npoints=500):
     ##############################################
     # Print the maximum thickness and its location
     ###############################################
-    print('Max analytical thickness = ',str(t),'\nMax numerical thickness = ',str(max_th.real))
-
     max_th_index = np.where(section_thickness_dist[1]==max_th)
-    print('\n\nPosition of max analytical thickness = ',str(x_mxth),'\nPosition of max numerical thickness = ',str(section_thickness_dist[0][max_th_index].real))
 
+    out = str([t,m,p]) + "\t" + str(t) + "\t" + str(max_th.real) + "\t" + str(x_mxth) + "\t" + str(section_thickness_dist[0][max_th_index].real)
+    file.write(out)
 
     ######################
     # Compute errors
@@ -191,7 +219,7 @@ def NACA_validation(t,m,p,c,Npoints=500):
     for i,th_i in enumerate(section_thickness_dist[1]):
         xi = section_thickness_dist[0][i]
         evalTh = InterpolateAnalytic(xi)
-        errorDirect[i] = abs(th_i-evalTh)/abs(evalTh)
+        errorDirect[i] = abs(th_i-evalTh)
     
 
 
@@ -204,7 +232,7 @@ def NACA_validation(t,m,p,c,Npoints=500):
     ax1.set_ylabel('$y$', color='k', labelpad=12)
     ax4.set_xlabel('$x$', color='k', labelpad=12)
     ax2.set_ylabel('$Th$', color='r', labelpad=12)
-    ax4.set_ylabel(r'$\frac{|Thx)-Th_{Num}(x)|}{|Th(x)|}$', color='k', labelpad=12)
+    ax4.set_ylabel(r'$|Th(x)-Th_{Num}(x)|$', color='k', labelpad=12)
 
     #  Airfoil plots
     line, = ax1.plot(x_up, y_up)
@@ -307,13 +335,31 @@ def main():
     #---------------------------------------------------------------------------------------------#
     # Naca airfoil parameters
     #---------------------------------------------------------------------------------------------#
-    t =[ 0.1]
-    m =[ 0.0]
-    p = [0.5]
-    c = [1.]
+    t = [ 0.05, 0.1,0.2]
+    m = [ 0.0,0.1,0.2]
+    p = [0.2,0.5,0.8]
+    # t = [0.1]
+    # m = [0.0]
+    # p = [0.2]
+    c = 1.
     
-    for i in range(len(t)):
-        NACA_validation(t[i],m[i],p[i],c[i])
+    file = open("thickness_regression_output.txt","w")
+    header = "Case (t,m,p)\tMax Th Analytical \t Max Th Numerical \t X(max_th) Analytical \t X(max_th) Numerical"
+    file.write(header)
+    
+    try:
+        for ti in t:
+            for mi in m:
+                for pi in p:
+                    NACA_validation(ti,mi,pi,c,file)
+    except Exception as ex:
+        template = "An exception of type {0} occurred. Arguments:\n{1!r}"
+        message = template.format(type(ex).__name__, ex.args)
+        print(message)
+        message = "Raised in %s" % inspect.trace()
+        print(message)
+                
+    file.close()
 
 
 if __name__== "__main__":
