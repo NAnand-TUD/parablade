@@ -7,7 +7,7 @@
 #                                                                                             #
 ###############################################################################################
 
-################################# FILE NAME: PlotBlade.py #####################################
+################################ FILE NAME: blade_plot.py #####################################
 #=============================================================================================#
 # author: Roberto, Nitish Anand                                                               |
 #    :PhD Candidates,                                                                         |
@@ -43,7 +43,7 @@ sys.path.append(BLADE_HOME+'/common/')
 #---------------------------------------------------------------------------------------------#
 from config import ReadUserInput
 from blade_3D import Blade3D
-
+from CAD_functions import get_curve_derivative
 
 #----------------------------------------------------------------------------------------------------------------------#
 # "Cluster mode" imports
@@ -141,9 +141,11 @@ class BladePlot:
         # Call the 2D or 3D plotting functions
         if self.NDIM == 2:
             self.make_plot_matplotlib_2D()
+            self.plot_thickness()
         elif self.NDIM == 3:
             self.make_plot_matplotlib_3D()
-            # self.plot_meridional_channel()
+            self.plot_meridional_channel()
+            self.plot_thickness()
         else:
             raise Exception('The number of dimensions must be 2 or 3')
 
@@ -564,3 +566,90 @@ class BladePlot:
 
         # Hide axes
         plt.axis('off')
+        
+    def plot_thickness(self):
+        section_thickness_dist,max_th_dist,lack_of_monotonicity_dist,r_coor = self.blade_in.get_blade_thickness_properties()
+        
+        # Plot radial distributions
+        def plot_radial_dist(data,tag):
+            # Prepare the figure
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111)
+            fontsize = 10
+            ax.set_xlabel(tag, fontsize=fontsize, color='k', labelpad=12)
+            ax.set_ylabel('Span %', fontsize=fontsize, color='k', labelpad=12)
+            ax.xaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+            ax.yaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+            for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+            for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+        
+            # Plot the z distribution of max thickness
+            line, = ax.plot(data, r_coor)
+            line.set_linewidth(1.25)
+            line.set_linestyle("-")
+            line.set_color("k")
+            line.set_marker("o")
+            line.set_markersize(3.5)
+            line.set_markeredgewidth(1)
+            line.set_markeredgecolor("k")
+            line.set_markerfacecolor("w")
+            line.set_label(' ')
+            
+            # Adjust pad
+            plt.tight_layout(pad=5.0, w_pad=None, h_pad=None)
+        
+        plot_radial_dist(max_th_dist,'$Th_{mx}$')
+        plot_radial_dist(lack_of_monotonicity_dist,'Lack of monotonicity')
+        
+        
+        # Plot the thicknesses curves
+    
+        
+        # Plot the z distribution of max thickness
+        def plot_axial_dist(dist,tag):
+            # Prepare the figure
+            fig = plt.figure(figsize=(8, 6))
+            ax = fig.add_subplot(111)
+            fontsize = 10
+            ax.set_xlabel('$x$ - axis', fontsize=fontsize, color='k', labelpad=12)
+            ax.set_ylabel(tag,fontsize=fontsize, color='k', labelpad=12)
+            ax.xaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+            ax.yaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+            for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+            for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+            
+            label_list = []
+            for i in range(self.blade_in.N_SECTIONS):
+                line, = ax.plot(dist[i][0], dist[i][1])
+                line.set_linewidth(1.25)
+                line.set_linestyle("-")
+                line.set_marker(" ")
+                line.set_markersize(3.5)
+                line.set_markeredgewidth(1)
+                line.set_markeredgecolor("k")
+                line.set_markerfacecolor("w")
+                local_label = 'Section '+ str(i+1) 
+                line.set_label(local_label)
+                label_list.append(local_label)
+            
+            # Adjust pad
+            plt.tight_layout(pad=5.0, w_pad=None, h_pad=None)
+        
+            plt.legend(label_list, loc='upper right')
+        
+        plot_axial_dist(section_thickness_dist,'$Th$')
+        
+        section_thickness_dist_der = []
+        for i in range(self.blade_in.N_SECTIONS):
+            x   = np.array(section_thickness_dist[i][0])
+            fx  = np.array(section_thickness_dist[i][1])
+            dfx = get_curve_derivative(x,fx)
+            section_thickness_dist_der.append([x,dfx])
+            
+        plot_axial_dist(section_thickness_dist_der,'$\\frac{d Th}{d x}$')
+        
+        
+        
+
+
+        

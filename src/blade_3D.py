@@ -7,7 +7,7 @@
 #                                                                                             #
 ###############################################################################################
 
-################################# FILE NAME: MakeBlade.py #####################################
+################################# FILE NAME: blade_3D.py #####################################
 #=============================================================================================#
 # author: Roberto, Nitish Anand                                                               |
 #    :PhD Candidates,                                                                         |
@@ -48,7 +48,9 @@ from CAD_functions import *
 from interpolation_functions import *
 from blade_2D_connecting_arcs import Blade2DConnectingArcs
 from blade_2D_camber_thickness import Blade2DCamberThickness
-
+from common import plotfun 
+from common import plotfun_xy
+from common import plot3fun
 
 #----------------------------------------------------------------------------------------------------------------------#
 # "Cluster mode" imports
@@ -86,6 +88,10 @@ class Blade3D:
     N_BLADES : Number of blades of the cascade. Positive integer
 
     N_SECTIONS : Number of blade sections used to create the blade (at least 2 sections)
+    
+    D_STRETCH : Parameter that controls the degree of radial stretching of the sections position using a sigmoid exponential
+    
+    INTERP_METHOD : Method for 2D surface interpolations. 'bilinear' or 'bicubic' 
 
     CASCADE_TYPE : Type of blade cascade. Possible values LINEAR or ANNULAR
 
@@ -213,6 +219,7 @@ class Blade3D:
     meanline_length             = None
     Nu                          = None
     Nv                          = None
+    section_coordinates         = None
 
     def __init__(self, IN, UV=None):
 
@@ -225,6 +232,14 @@ class Blade3D:
         self.PARAMETRIZATION_TYPE   = IN["PARAMETRIZATION_TYPE"]
         self.OPERATION_TYPE         = IN['OPERATION_TYPE']
         self.PLOT_FORMAT            = IN["PLOT_FORMAT"]
+        self.D_STRETCH              = float(IN["D_STRETCH"][0])
+         
+        #  The interp_method key should be optional
+        try:
+           self.interp_method = IN["INTERP_METHOD"]
+        except:
+            self.interp_method = 'bilinear'
+            
 
         # Check the number of sections
         if self.N_SECTIONS < 2: raise Exception('It is necessary to use at least 2 sections to generate the blade')
@@ -241,8 +256,8 @@ class Blade3D:
             self.u = UV[0, :]
             self.v = UV[1, :]
             self.N_points = np.shape(UV)[1]
-
-        self.make_surface_interpolant(interp_method='bilinear')
+            
+        self.make_surface_interpolant()
 
     # ---------------------------------------------------------------------------------------------------------------- #
     # Generate the blade geometry and/or sensitities
@@ -444,7 +459,7 @@ class Blade3D:
         return surface_coordinates
 
 
-    def make_surface_interpolant(self, interp_method='bilinear'):
+    def make_surface_interpolant(self):
 
         """ Create a surface interpolant using the coordinates of several blade sections
 
@@ -463,19 +478,21 @@ class Blade3D:
         # Compute the coordinates of several blade sections
         # The (u,v) parametrization used to compute the blade sections must be regular (necessary for interpolation)
         num_points_section = 500
-        u_interp = np.linspace(0.00, 1, num_points_section)
-        v_interp = np.linspace(0.00, 1, self.N_SECTIONS)
+        u_interp = np.linspace(0.00, 1., num_points_section)
+        v_interp = self.make_radial_distribution()
         S_interp = np.zeros((3, num_points_section, self.N_SECTIONS), dtype=complex)
+        self.section_coordinates = np.zeros((self.N_SECTIONS, 2, num_points_section ), dtype=complex)  
         for k in range(self.N_SECTIONS):
-            S_interp[..., k] = self.get_section_coordinates(u_interp, v_interp[k])
+            S_interp[..., k],self.section_coordinates[k,...] = self.get_section_coordinates(u_interp, v_interp[k])          
+                
 
         # Create the interpolator objects for the (x,y,z) coordinates
-        if interp_method == 'bilinear':
+        if self.interp_method == 'bilinear':
             x_function = BilinearInterpolation(u_interp, v_interp, S_interp[0, ...])
             y_function = BilinearInterpolation(u_interp, v_interp, S_interp[1, ...])
             z_function = BilinearInterpolation(u_interp, v_interp, S_interp[2, ...])
 
-        elif interp_method == 'bicubic':
+        elif self.interp_method == 'bicubic':
             # There seems to be a problem with bicubic interpolation, the output is wiggly
             x_function = BicubicInterpolation(u_interp, v_interp, S_interp[0, ...])
             y_function = BicubicInterpolation(u_interp, v_interp, S_interp[1, ...])
@@ -486,6 +503,37 @@ class Blade3D:
 
         # Create the surface interpolant using a lambda function to combine the (x,y,z) interpolants
         self.surface_interpolant = lambda u, v: np.asarray((x_function(u, v), y_function(u, v), z_function(u, v)))
+        
+    def make_radial_distribution(self):
+
+        """ Define a radial distribution of sections with an exponential accumulation to the endwalls
+        
+            Author: Ricardo Puente, 09/2020
+                    r.puente@imperial.ac.uk
+        """
+        
+        v_interp = np.linspace(0.,1.,self.N_SECTIONS)
+        
+        if self.D_STRETCH>0.:
+        
+            v1 = np.zeros(self.N_SECTIONS)        
+        
+            x  = np.linspace(-1.,1.,self.N_SECTIONS)
+            
+            # Compute sigmoid
+            e = np.exp(-self.D_STRETCH*x)
+            for i in range(self.N_SECTIONS):
+                v1[i] = 1./(1.+e[i])
+            
+            # Normalize for output
+            vmn = min(v1)
+            iL  = 1./(max(v1)-vmn)
+            for i in range(self.N_SECTIONS):
+                v_interp[i] = (v1[i]-vmn)*iL
+            
+        #plotfun_xy(np.linspace(0.,1.,self.N_SECTIONS),v_interp,'radist')
+            
+        return v_interp
 
 
     def make_meridional_channel(self):
@@ -546,7 +594,29 @@ class Blade3D:
         section_coordinates : ndarray with shape (3, Nu)
             Array containing the (x,y,z) coordinates of the current blade section
 
+        plane_section_coordinates : ndarray with shape (2, Nu)
+            Array containing the (m',rTh) coordinates of the current blade section
+
         """
+        # Local auxiliary functions
+        def transfinite_interpolation(x, v_section):
+            # Ensure that the x-coordinates are between zero and one (actually between zero+eps and one-eps)
+            uu_section = (x - np.amin(x) + 1e-12)/(np.amax(x) - np.amin(x) + 2e-12)
+
+            # Obtain the x-z coordinates by transfinite interpolation of the meridional channel contour
+            xout = self.get_meridional_channel_x(uu_section, v_section)       # x corresponds to the axial direction
+            zout = self.get_meridional_channel_z(uu_section, v_section)       # x corresponds to the radial direction
+
+            # Create a single-variable function with the coordinates of the meridional channel
+            x_func = lambda u: self.get_meridional_channel_x(u, v_section)
+            z_func = lambda u: self.get_meridional_channel_z(u, v_section)
+            m_func = lambda u: np.concatenate((x_func(u), z_func(u)), axis=0)
+
+            # Compute the arc length of the meridional channel (streamline)
+            arc_length = get_arc_length(m_func, 0.0 + 1e-6, 1.0 - 1e-6)
+        
+            return xout,zout,arc_length
+
 
         # Get the design variables of the current blade section
         section_variables = {}
@@ -583,6 +653,9 @@ class Blade3D:
         # Compute the y-coordinates of the current blade section by scaling the unitary blade
         y = self.DVs_functions["y_leading"](v_section) + y * arc_length
 
+        # Piece together the planar x,y coordinates
+        plane_section_coordinates = np.concatenate((x,y), axis=0)
+    
         # Transform the blade coordinates to cartesian coordinates
         if self.CASCADE_TYPE == "LINEAR":
             X = x
@@ -598,7 +671,11 @@ class Blade3D:
         # Piece together the X-Y-Z coordinates
         section_coordinates = np.concatenate((X, Y, Z), axis=0)
 
-        return section_coordinates
+        # DBG
+        #plotfun(plane_section_coordinates,'Airfoil')
+        ###
+        
+        return section_coordinates, plane_section_coordinates
 
 
     # ---------------------------------------------------------------------------------------------------------------- #
@@ -891,3 +968,100 @@ class Blade3D:
         shroud_coordinates = np.asarray((x_hub, z_hub))
 
         return shroud_coordinates
+    
+
+    def get_section_thickness_properties(self,section_upper_side,section_lower_side):
+    
+        """ Compute the chordwise thickness distribution between the upper and lower side curves
+        For optimisation purposes, this will allow to impose constraints such as:
+        - A limit on or a specific radial distribution of maximum thickness is desired
+        - Except for very particular cases, a well designed airfoil only has one global
+         maximum, i.e. dTh/dx is monotonic
+   
+        Parameters
+        ----------
+        section_upper_side: Array of upper side x-y coordinates
+        
+        section_lower_side: Array of lower side x-y coordinates
+       
+        Returns
+        -------
+        section_thickness_dist : Array of shape (2,points). For each section, its axial thickness distribution
+            
+        maxt_th                : The maximum thickness radial distribution
+       
+        lack_of_monotonicity   : A measure of the lack of monotonicity of the axial derivative of the thickness 
+                                If lower than or equal to 0, it is monotone
+                                Given as a radial distribution
+
+
+        Author: Ricardo Puente, 09/2020
+                r.puente@imperial.ac.uk
+        """
+        
+        # Compute the camber line as the bisector between the lower and the upper side
+        camber, upper_tangent,lower_tangent = get_bisectors(section_upper_side,section_lower_side)   
+        
+        # # DBG plots
+        #     # Airfoil surfaces and camber line            
+        # plot3fun(section_upper_side.real,'SS',section_lower_side.real,'PS', camber.real,'Camber')
+        # ####
+        
+        # Compute the thickness distribution as the distance between the tangent points
+        m = len(camber[0])
+        section_thickness_dist = np.zeros((2,m),dtype=complex)
+        for i in range(m):
+            up = upper_tangent[i]
+            lp = lower_tangent[i]
+            dv = up-lp
+            d = (dv[0]*dv[0]+dv[1]*dv[1])**(0.5)
+            section_thickness_dist[1][i] = d
+            section_thickness_dist[0][i] = camber[0][i]
+             
+        # Get maximum
+        max_th = max(section_thickness_dist[1])
+        
+        # Compute derivative of thickness distribution
+        thickness_der = get_curve_derivative(camber[0],section_thickness_dist[1])
+        
+        # Get monotonicity measure
+        lack_of_monotonicity = get_monotonicity_measure(camber[0],thickness_der)
+        
+        # # DBG plots
+        #     # Thickness and thickness derivative
+        # plotfun_xy(camber[0].real,section_thickness_dist.real,'Thickness')
+        # plotfun_xy(camber[0].real,thickness_der.real,'Thickness Derivative')        
+        # #############
+        
+        return section_thickness_dist,max_th,lack_of_monotonicity
+    
+    def get_blade_thickness_properties(self):
+    
+        """ Call get_section_thickness_properties for every section to give the radial distribution
+            of thickness properties for each control section   
+       
+        Returns
+        -------
+        section_thickness_dist    : Axial thickness distribution per section
+        
+        max_th_dist               : The maximum thickness per section
+       
+        lack_of_monotonicity_dist : Monotonicity measure per section
+
+
+        Author: Ricardo Puente, 09/2020
+                r.puente@imperial.ac.uk
+        """
+        
+        section_thickness_dist    = []
+        max_th_dist               = np.zeros((self.N_SECTIONS,),dtype=complex)
+        lack_of_monotonicity_dist = np.zeros((self.N_SECTIONS,),dtype=complex)
+        
+        r_coor = self.make_radial_distribution()
+
+        for i in range(0,self.N_SECTIONS):
+            upper_side,lower_side = split_curve(self.section_coordinates[i])
+            section_thickness,max_th_dist[i],lack_of_monotonicity_dist[i] = self.get_section_thickness_properties(upper_side,lower_side)
+            section_thickness_dist.append(section_thickness)            
+        
+        return section_thickness_dist,max_th_dist,lack_of_monotonicity_dist,r_coor

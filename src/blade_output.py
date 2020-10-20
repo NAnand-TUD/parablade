@@ -7,7 +7,7 @@
 #                                                                                             #
 ###############################################################################################
 
-################################# FILE NAME: PlotBlade.py #####################################
+############################### FILE NAME: blade_output.py ####################################
 #=============================================================================================#
 # author: Roberto, Nitish Anand                                                               |
 #    :PhD Candidates,                                                                         |
@@ -112,7 +112,7 @@ class BladeOutput:
 
         """ Print hub coordinates in a .csv file """
 
-        print("Writting hub surface coordinates...", end='                    ')
+        print("Writing hub surface coordinates...", end='                    ')
 
         # Create output directory in case it does not exist
         full_path = path + '/output/coordinates/'

@@ -7,7 +7,7 @@
 #                                                                                             #
 ###############################################################################################
 
-################################# FILE NAME: MakeBlade.py #####################################
+########################## FILE NAME: interpolation_functions.py ##############################
 #=============================================================================================#
 # author: Roberto, Nitish Anand                                                               |
 #    :PhD Candidates,                                                                         |
@@ -28,11 +28,108 @@ import sys
 import pdb
 import time
 import numpy as np
+from scipy.interpolate import griddata
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# Base class for 2D interpolations
+# -------------------------------------------------------------------------------------------------------------------- #
+class Interpolation2D:
+    """ Create a bilinear interpolator for a two-dimensional function ´f´ on a regular ´(x,y)´ grid
+
+    Parameters
+    ----------
+    xu : array_like with shape (Nx,)
+        Array containing the x-coordinates on the original grid
+
+    yu : array_like with shape (Ny,)
+        Array containing the y-coordinates on the original grid
+
+    fu : array_line with shape (Nx, Ny)
+        Array containing the function values on the original grid
+
+    Adds an extra interpolation layer to manage uneven point distributions
+    
+
+    """ 
+    
+    def __init__(self, x, y, f):
+
+        # Check for evenly spaced grids
+        
+        even_spacing = lambda x:  all(abs(np.diff(x)-np.diff(x)[0]) < 1.e-6)
+        even_grid =  even_spacing(x) and even_spacing(y)
+        
+        if even_grid:
+            
+            self.x = x
+            self.y = y
+            self.f = f
+            
+        else:        
+            
+            self.x,self.y,self.f = self.interpolate_2d(x,y,f)
+        
+    def interpolate_2d(self,x,y,f):
+        """ 2D interpolation to go from an uneven grid to a regular one. For now, uses directly the 
+            scipy version. 
+            
+            Parameters
+            ----------
+            
+            x    : Array defining the old basis gridpoints with shape (Nx,)
+            
+            y    : Array defining the old basis gridpoints with shape (Ny,)
+            
+            f   : Array defining the old basis function values with shape (Nx,Ny)
+            
+            Returns
+            ----------
+            xnew : Array defining the new gridpoints with shape (Nx,)
+            
+            ynew : Array defining the new gridpoints with shape (Ny,)
+            
+            fnew : Array defining the new basis function values with shape (Nx,Ny)
+        """  
+        # Generate an evenly spaced mesh
+        Nx = len(x)
+        Ny = len(y)
+        
+        xnew = np.linspace(min(x),max(x),Nx)
+        ynew = np.linspace(min(y),max(y),Ny)
+        
+        # Translate a structured grid format to an unstructured one
+        xl=[]
+        yl=[]
+        zl=[]
+        xnew_l=[]
+        ynew_l=[]
+        
+        for i in range(Nx):
+            for j in range(Ny):
+                xl.append(x[i])
+                yl.append(y[j])
+                xnew_l.append(xnew[i])
+                ynew_l.append(ynew[j])
+                zl.append(f[i][j])        
+        
+        xarr = np.array(xl)
+        yarr = np.array(yl)
+        zarr = np.array(zl)
+        
+        xnew_arr = np.array(xl)
+        ynew_arr = np.array(yl)
+       
+        znew = griddata((xarr, yarr), zarr, (xnew_arr, ynew_arr), method='cubic')   
+        
+        # Reorder znew as a 2D array
+        fnew = np.reshape(znew, (-1, Ny))
+
+        return xnew,ynew,fnew
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Bilinear interpolation class
 # -------------------------------------------------------------------------------------------------------------------- #
-class BilinearInterpolation:
+class BilinearInterpolation(Interpolation2D):
 
     """ Create a bilinear interpolator for a two-dimensional function ´f´ on a regular ´(x,y)´ grid
 
@@ -81,13 +178,8 @@ class BilinearInterpolation:
 
     """
 
-
     def __init__(self, x, y, f):
-
-        # Declare input variables as instance variables
-        self.x = x
-        self.y = y
-        self.f = f
+        super().__init__(x, y, f)
 
 
     def __call__ (self, xq, yq):
@@ -150,7 +242,7 @@ class BilinearInterpolation:
         # Bilinear interpolation formula
         u = (xq - x[i]) / (x[i + 1] - x[i])
         v = (yq - y[j]) / (y[j + 1] - y[j])
-        fq = (1 - u) * (1 - v) * f[i, j] + u * (1 - v) * f[i + 1, j] + u * v * f[i + 1, j + 1] + (1 - u) * v * f[i, j + 1]
+        fq = (1. - u) * (1. - v) * f[i, j] + u * (1. - v) * f[i + 1, j] + u * v * f[i + 1, j + 1] + (1. - u) * v * f[i, j + 1]
 
         # # Equivalent, but slower, alternative formula
         # Q1 = (x[i + 1] - xq) / (x[i + 1] - x[i]) * f[i, j] + (yq - x[i]) / (x[i + 1] - x[i]) * f[i + 1, j]
@@ -163,7 +255,7 @@ class BilinearInterpolation:
 # -------------------------------------------------------------------------------------------------------------------- #
 # Bicubic interpolation class
 # -------------------------------------------------------------------------------------------------------------------- #
-class BicubicInterpolation:
+class BicubicInterpolation(Interpolation2D):
 
     """ Create a bicubic interpolator for a two-dimensional function ´f´ on a regular ´(x,y)´ grid
 
@@ -212,13 +304,8 @@ class BicubicInterpolation:
 
     """
 
-
     def __init__(self, x, y, f):
-
-        # Declare input variables as instance variables
-        self.x = x
-        self.y = y
-        self.f = f
+        super().__init__(x, y, f)
 
 
     def __call__(self, xq, yq):
@@ -358,7 +445,7 @@ class BicubicInterpolation:
 # -------------------------------------------------------------------------------------------------------------------- #
 # Bicubic interpolation class (alternative)
 # -------------------------------------------------------------------------------------------------------------------- #
-class BicubicInterpolation_bis:
+class BicubicInterpolation_bis(Interpolation2D):
 
     """ Create a bicubic interpolator for a two-dimensional function ´f´ on a regular grid ´(x,y)´
 
@@ -409,11 +496,7 @@ class BicubicInterpolation_bis:
 
 
     def __init__(self, x, y, f):
-
-        # Declare input variables as instance variables
-        self.x = x
-        self.y = y
-        self.f = f
+        super().__init__(x, y, f)
 
 
     def __call__(self, xq, yq):

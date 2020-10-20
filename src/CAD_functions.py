@@ -7,7 +7,7 @@
 #                                                                                             #
 ###############################################################################################
 
-################################# FILE NAME: PlotBlade.py #####################################
+############################### FILE NAME: CAD_functions.py ###################################
 # =============================================================================================#
 # author: Roberto, Nitish Anand                                                               |
 #    :PhD Candidates,                                                                         |
@@ -29,7 +29,11 @@ import pdb
 import time
 import numpy as np
 from scipy import integrate
+from scipy import interpolate
+from scipy import optimize
 
+from common import sort_2d_list
+from common import plotfun_xy
 
 #----------------------------------------------------------------------------------------------------------------------#
 # "Cluster mode" imports
@@ -71,10 +75,10 @@ def get_arc_length(C_func, t1, t2):
     # Compute the arc length differential using the central finite differences
     # Be careful with the step-size selected, accurary is not critical, but rounding error must not bloe up
     # It is not possible to use the complex step is the result of the arc-length computation is further differentiated
-    def get_arc_legth_differential(t, step=1e-3):
+    def get_arc_legth_differential(t, step=1.e-3):
         # dCdt = np.imag(C_func(t + 1j * step)) / step              # dC/dt = (dx_0/dt, ..., dx_n/dt)
-        dCdt = (C_func(t + step) - C_func(t - step))/(2*step)       # dC/dt = (dx_0/dt, ..., dx_n/dt)
-        dLdt = np.sqrt(np.sum(dCdt**2, axis=0))                     # dL/dt = [(dx_0/dt)^2 + ... + (dx_n/dt)^2]^(1/2)
+        dCdt = (C_func(t + step) - C_func(t - step))/(2.*step)       # dC/dt = (dx_0/dt, ..., dx_n/dt)
+        dLdt = np.sqrt(np.sum(dCdt**2., axis=0))                     # dL/dt = [(dx_0/dt)^2 + ... + (dx_n/dt)^2]^(1/2)
         return dLdt
 
     # Compute the arc length of C(t) in the interval [t1, t2] by numerical integration
@@ -82,6 +86,332 @@ def get_arc_length(C_func, t1, t2):
 
     return L
 
+# -------------------------------------------------------------------------------------------------------------------- #
+# Compute the derivative of a 1D curve
+# -------------------------------------------------------------------------------------------------------------------- #
+def get_curve_derivative(x,y):
+    
+    """ Compute the derivative of a 1D curve
+
+        Parameters
+        ----------
+        x: x coordinate
+        y: y coordinate
+            
+        Returns
+        ----------
+        der_curve : ndarray with shape (ndim,)
+                    Array containing the curve derivatives at each point
+                    
+        Author: Ricardo Puente, 09/2020
+                r.puente@imperial.ac.uk
+
+    """
+    
+    interpol_der = interpolate.CubicSpline(x.real,y).derivative(1)
+    der_curve = interpol_der(x)
+    
+    return der_curve
+
+
+
+def get_curve_basis(x,y):
+    
+    """ Compute the local basis vectors of a 1D curve given as point array
+
+        Parameters
+        ----------
+        x: x coordinate
+        y: y coordinate
+            
+        Returns
+        ----------
+        tangent : ndarray with shape (ndim, 2)
+                  Array containing the curve tangent vectors at each point
+                 
+        normal  : ndarray with shape (ndim, 2)
+                  Array containing the curve normal vectors at each point
+                       
+        Author: Ricardo Puente, 09/2020
+
+    """
+    der_curve = get_curve_derivative(x,y)
+    
+    m = len(x)
+    
+    tangent = np.zeros((m,2),dtype=complex)
+    normal  = np.zeros((m,2),dtype=complex)
+    
+    # Normal computed as cross product of the tangent vector and the outside plane vector
+    for i in range(0,m):
+        dy = der_curve[i]
+        imod = (1.+dy*dy)**(-0.5)
+        tangent[i][0] = imod
+        tangent[i][1] = dy*imod
+        normal[i][0]  = -tangent[i][1]
+        normal[i][1]  =  tangent[i][0]
+    
+    return tangent,normal
+
+def get_curve_basis_spline(x,der_interpolant):
+    
+    """ Compute the local basis vectors of a 1D curve given as a spline interpolant
+
+        Parameters
+        ----------
+        x: x coordinate to evaluate the interpolant
+        der_interpolant : A cubic spline interpolant derivative object
+            
+        Returns
+        ----------
+        tangent : ndarray with shape (2, )
+                  Array containing the curve tangent vector
+                 
+        normal  : ndarray with shape (2, )
+                  Array containing the curve normal vector
+                       
+        Author: Ricardo Puente, 09/2020
+
+    """
+    
+    tangent = np.zeros((2,),dtype=complex)
+    normal  = np.zeros((2,),dtype=complex)
+    
+    dy = der_interpolant(x)
+    
+    imod = (1.+dy*dy)**(-0.5)
+    tangent[0] = imod
+    tangent[1] = dy*imod
+    normal[0]  = -tangent[1]
+    normal[1]  =  tangent[0]
+    
+    return tangent,normal
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# Compute the bisector curve of 2 others numerically
+# -------------------------------------------------------------------------------------------------------------------- #
+def get_bisectors(curve_1,curve_2,npoints=50):
+    
+    """ Compute the bisector curve of 2 other curves
+
+        Parameters
+        ----------
+        curve_1 : ndarray with shape (2, ndim)
+                  Array containing one curve
+                  
+        curve_1 : ndarray with shape (2,ndim)
+                  Array containing the other curve
+                  
+        npoints : The number of discretization points 
+            
+        Returns
+        ----------
+        bisector         : ndarray with shape (2, points_resolved)
+                           Array containing the bisector curve
+                       
+        tangent_points_1 : ndarray with shape ( points_resolved,2) containing the upper curve tangency points with the inscribed circle
+                   
+        tangent_points_2 : ndarray with shape ( points_resolved,2)  containing the lower curve tangency points with the inscribed circle
+
+         Author: Ricardo Puente, 09/2020
+    """
+
+    bisector = []
+    tangent_points_1 = []
+    tangent_points_2 = []
+    
+    # Create the interpolant spline object. Use only the real part of x (the thickeness may be complex but is computed as a function of real x coordinates)
+    y_1_interpolant = interpolate.CubicSpline(curve_1[0].real,curve_1[1])
+    y_2_interpolant = interpolate.CubicSpline(curve_2[0].real,curve_2[1])
+    
+    
+    y_1_interpolant_der = y_1_interpolant.derivative(1)
+    y_2_interpolant_der = y_2_interpolant.derivative(1)
+
+    # Create a parametric basis for the curves
+    s = np.linspace(0.05, 0.95, npoints)
+    
+    # Define the function to find the root of
+    def equidistance_condition(s,x0,L,xp,yp,np,interpolant,der_interpolant):
+        x = x0+L*s
+        y = interpolant(x)
+        t,n = get_curve_basis_spline(x,der_interpolant)
+        dx  = xp-x
+        dy  = yp-y
+        sn  = np+n
+        res = dy*sn[0]-dx*sn[1]     
+        return res.real
+    
+    
+    # Data necessary for the curve parametrization
+    min_x1 = curve_1[0][0]
+    min_x2 = curve_2[0][0]
+    
+    L1 = curve_1[0][-1]-min_x1
+    L2 = curve_2[0][-1]-min_x2
+    
+    
+    ## DBG
+    # x1_interpolated = np.zeros(npoints)
+    # x2_interpolated = np.zeros(npoints)
+    # for i in range(0,npoints):
+    #     si = s[i]
+    #     x1_interpolated[i] = min_x1+L1*si
+    #     x2_interpolated[i] = min_x2+L2*si
+    # y1_interpolated = y_1_interpolant(x1_interpolated)
+    # y2_interpolated = y_2_interpolant(x2_interpolated) 
+    # plotfun_xy(x1_interpolated,y1_interpolated,'y1')
+    # plotfun_xy(x2_interpolated,y2_interpolated,'y2')
+    ##
+    
+    
+    # # Compute curve lengths        
+    # D1 = get_arc_length(y_1_interpolant, min_x1,min_x1+L1)
+    # D2 = get_arc_length(y_2_interpolant, min_x2,min_x2+L2)
+        
+    # fac=D1/D2
+    
+    for i in range(0,npoints):
+        si = s[i]
+        # x,y and normals in first curve
+        xi = min_x1+L1*si
+        yi = y_1_interpolant(xi)
+        ti,ni = get_curve_basis_spline(xi,y_1_interpolant_der)
+        # Define a single variable lambda
+        zero_fun = lambda u: equidistance_condition(u,min_x2,L2,xi,yi,ni,y_2_interpolant,y_2_interpolant_der)
+        
+        # Find the s in curve 2 where the equidistance condition is fullfilled
+        try:
+            sol = optimize.root_scalar(zero_fun, bracket=[s[0],s[-1]], method='brentq')
+            sj = sol.root
+            # x,y and normals in second curve
+            xj = min_x2+L2*sj
+            yj = y_2_interpolant(xj)        
+            tj,nj = get_curve_basis_spline(xj,y_2_interpolant_der)
+            # Compute the radius of the circle
+            d = (xi-xj)/(ni[0]+nj[0])
+            if d < 0.:
+                print('Bracketing: ' + str(zero_fun(0.)) +', '+ str(zero_fun(1.)))
+                print('Wrong solution to bisection problem!')
+            else:
+                if d > L1: # Absurd airfoil
+                    print('Thickness to chord ratio: ' + str(d/L1))
+                    print('Either absurd airfoil or bisection error...')
+                else:
+                    # Get the bisection point
+                    xbi = xi - d * ni[0] 
+                    ybi = yi - d * ni[1] 
+                    bisector.append([xbi,ybi])
+                    # Get the tangent points
+                    tangent_points_1.append([xi,yi]) 
+                    tangent_points_2.append([xj,yj]) 
+        except:
+            print('Bracketing: ' + str(zero_fun(0.)) +', '+ str(zero_fun(1.)))
+            print('No solution found for bisection problem, not appending...')
+        
+        
+    bisector = np.array(bisector).transpose() 
+    tangent_points_1 = np.array(tangent_points_1)
+    tangent_points_2 = np.array(tangent_points_2)
+    
+    return bisector,tangent_points_1,tangent_points_2
+
+# -------------------------------------------------------------------------------------------------------------------- #
+# Compute a monotonicity measure of a curve
+# -------------------------------------------------------------------------------------------------------------------- #
+def get_monotonicity_measure(x,y):
+    """ Compute a monotonicity measure of a curve defined by two point arrays
+        Ref: "Quantifying non-monotonicity of functions and lack of positivity in signed measures"
+              Y. Davydov and R. Zitikis, Modern Stochastics: Theory and Applications
+              
+
+        Parameters
+        ----------
+        x: x coordinate
+        y: y coordinate
+            
+        Returns
+        ----------
+        LOM : Lack of monotonicity. If LOM <= 0, it is a monotone function
+                       
+         Author: Ricardo Puente, 09/2020
+                r.puente@imperial.ac.uk
+    """  
+
+    curve_der_abs = abs(get_curve_derivative(x,y))
+
+    integral = np.trapz(curve_der_abs,x)
+    
+    LOM = 1.-abs(y[0]-y[-1])/integral
+    
+    return LOM
+ 
+# -------------------------------------------------------------------------------------------------------------------- #
+# Split a closed curve in upper and lower sides
+# -------------------------------------------------------------------------------------------------------------------- #   
+def split_curve(curve):    
+    """ Split a closed curve in upper and lower sides
+    
+        Parameters
+        ----------
+        curve_in: Array of size (2,Npoints) with the curve points
+            
+        Returns
+        ----------
+        xUp : Upper side
+        xDw : Lower side
+                       
+         Author: Ricardo Puente, 09/2020
+                r.puente@imperial.ac.uk
+                
+    """
+    
+    idx_mx = np.where(curve[0] == np.amax(curve[0]))[0][0]
+    idx_mn = np.where(curve[0] == np.amin(curve[0]))[0][0]
+    
+    idx1 = min([idx_mx,idx_mn])
+    idx2 = max([idx_mx,idx_mn])
+    
+    x1=[]
+    x2=[] 
+    for i in range(curve[0].size):
+        xi = curve[0][i]
+        if i < idx1 or i > idx2:
+            x1.append([xi,curve[1][i]])
+        else:
+            x2.append([xi,curve[1][i]]) 
+
+    # Remove duplicates 
+    def remove_duplicates(k):            
+        new_k = []
+        for elem in k:
+            if elem not in new_k:
+                new_k.append(elem)            
+        return new_k
+    
+    x1 = remove_duplicates(x1)
+    x2 = remove_duplicates(x2)
+    
+    # Sort the lists according to the x coordinate    
+    x1 = sort_2d_list(x1)
+    x2 = sort_2d_list(x2) 
+    
+                    
+    xtemp1 = np.array(x1).transpose() 
+    xtemp2 = np.array(x2).transpose()
+    
+    # Check which curve is upper or lower
+    max1 = max(xtemp1[1])
+    max2 = max(xtemp2[1])
+    
+    if max1>max2:
+        xUp = xtemp1
+        xDw = xtemp2
+    else:
+        xDw = xtemp1
+        xUp = xtemp2 
+                
+    return xUp,xDw
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -189,8 +519,8 @@ class BSplineCurve:
         -------
         C : ndarray with shape (ndim, N)
             Array containing B-Spline curve coordinates
-            The first dimension of ´S´ spans the ´(x,y,z)´ coordinates
-            The second dimension of ´S´ spans the u-parametrization sample points
+            The first dimension of ´C´ spans the ´(x,y,z)´ coordinates
+            The second dimension of ´C´ spans the u-parametrization sample points
 
         """
 
@@ -1299,9 +1629,6 @@ class NurbsCurve:
 
             # Adjust pad
             plt.tight_layout(pad=5.0, w_pad=None, h_pad=None)
-
-
-
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

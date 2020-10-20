@@ -9,6 +9,8 @@ from optparse import OptionParser
 import os, errno, sys, subprocess
 import numpy as np
 global options
+import matplotlib as mpl
+import matplotlib.pyplot as plt
 
 def symlink_force(target, link_name):
     try:
@@ -169,3 +171,115 @@ def PrintBanner():
     print("###############################################################################################")
     print('\n')
 
+
+
+# Sort 2D lists according to the idx coordinate
+def sort_2d_list(sub_li,idx=0):
+       return(sorted(sub_li, key = lambda x: x[idx])) 
+   
+ # DBG plots ################# REMOVE WHEN WORKING!!!
+def plot2fun(curve1,l1,curve2,l2):
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    fontsize = 10
+    ax.set_xlabel('$x$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.set_ylabel('$y$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.xaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    ax.yaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+    for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+        
+    line, = ax.plot(curve1[0], curve1[1])
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("r")
+    line.set_label(l1)
+            
+    line, = ax.plot(curve2[0], curve2[1])
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("b")
+    line.set_label(l2)            
+            
+    ax.legend()
+            
+    fig = plt.show()
+            
+#######
+def plotfun(curve1,l1):
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    fontsize = 10
+    ax.set_xlabel('$x$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.set_ylabel('$y$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.xaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    ax.yaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+    for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+        
+    line, = ax.plot(curve1[0], curve1[1])
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("r")
+    line.set_label(l1)                      
+            
+    ax.legend()
+            
+    fig = plt.show()
+###   
+def plotfun_xy(x,y,l1):
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    fontsize = 10
+    ax.set_xlabel('$x$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.set_ylabel('$y$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.xaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    ax.yaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+    for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+        
+    line, = ax.plot(x, y)
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("r")
+    line.set_label(l1)                      
+            
+    ax.legend()
+            
+    fig = plt.show()
+###     
+def plot3fun(curve1,l1,curve2,l2,curve3,l3):
+    fig = plt.figure(figsize=(8, 6))
+    ax = fig.add_subplot(111)
+    fontsize = 10
+    ax.set_xlabel('$x$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.set_ylabel('$y$ - axis', fontsize=fontsize, color='k', labelpad=12)
+    ax.xaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    ax.yaxis.set_major_formatter(mpl.ticker.FormatStrFormatter('%.2f'))
+    for t in ax.xaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+    for t in ax.yaxis.get_major_ticks(): t.label.set_fontsize(fontsize)
+        
+    line, = ax.plot(curve1[0], curve1[1])
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("r")
+    line.set_label(l1)
+            
+    line, = ax.plot(curve2[0], curve2[1])
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("b")
+    line.set_label(l2)
+            
+    line, = ax.plot(curve3[0], curve3[1])
+    line.set_linewidth(1.25)
+    line.set_linestyle("-")
+    line.set_color("k")
+    line.set_marker("o")
+    line.set_label(l3)
+            
+    ax.legend()
+            
+    fig = plt.show()
+            
+#######  
