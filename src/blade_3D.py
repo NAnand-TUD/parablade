@@ -90,6 +90,9 @@ class Blade3D:
     N_SECTIONS : Number of blade sections used to create the blade (at least 2 sections)
     
     D_STRETCH : Parameter that controls the degree of radial stretching of the sections position using a sigmoid exponential
+   
+    D_STRETCH : Type of radial stretching, SIG (2 sided sigmoidal), HUB (exponential accumulating at the hub)
+                or TIP (exponential accumulating at the tip)
     
     INTERP_METHOD : Method for 2D surface interpolations. 'bilinear' or 'bicubic' 
 
@@ -232,7 +235,14 @@ class Blade3D:
         self.PARAMETRIZATION_TYPE   = IN["PARAMETRIZATION_TYPE"]
         self.OPERATION_TYPE         = IN['OPERATION_TYPE']
         self.PLOT_FORMAT            = IN["PLOT_FORMAT"]
-        self.D_STRETCH              = float(IN["D_STRETCH"][0])
+        
+        #  The D_STRETTCH key should be optional
+        try:
+            self.D_STRETCH = float(IN["D_STRETCH"][0])
+            self.D_TYPE    = IN["D_TYPE"][0]
+        except:
+            self.D_STRETCH = -1.
+            self.D_TYPE    = ""
          
         #  The interp_method key should be optional
         try:
@@ -506,7 +516,7 @@ class Blade3D:
         
     def make_radial_distribution(self):
 
-        """ Define a radial distribution of sections with an exponential accumulation to the endwalls
+        """ Define a radial distribution of sections with an exponential accumulation close to the endwalls
         
             Author: Ricardo Puente, 09/2020
                     r.puente@imperial.ac.uk
@@ -520,11 +530,18 @@ class Blade3D:
         
             x  = np.linspace(-1.,1.,self.N_SECTIONS)
             
-            # Compute sigmoid
             e = np.exp(-self.D_STRETCH*x)
-            for i in range(self.N_SECTIONS):
-                v1[i] = 1./(1.+e[i])
-            
+            if self.D_TYPE == "SIG":
+                # Compute sigmoid
+                for i in range(self.N_SECTIONS):
+                    v1[i] = 1./(1.+e[i])
+            elif self.D_TYPE == "HUB":
+                # Compute exponential
+                v1 = e           
+            elif self.D_TYPE == "TIP":
+                # Compute inverse exponential
+                v1 = 1./e
+                    
             # Normalize for output
             vmn = min(v1)
             iL  = 1./(max(v1)-vmn)
@@ -969,8 +986,8 @@ class Blade3D:
 
         return shroud_coordinates
     
-
-    def get_section_thickness_properties(self,section_upper_side,section_lower_side):
+    @staticmethod
+    def get_section_thickness_properties(section_upper_side,section_lower_side):
     
         """ Compute the chordwise thickness distribution between the upper and lower side curves
         For optimisation purposes, this will allow to impose constraints such as:
@@ -1033,7 +1050,7 @@ class Blade3D:
         # plotfun_xy(camber[0].real,thickness_der.real,'Thickness Derivative')        
         # #############
         
-        return section_thickness_dist,max_th,lack_of_monotonicity
+        return section_thickness_dist,max_th,lack_of_monotonicity,camber,thickness_der
     
     def get_blade_thickness_properties(self):
     
@@ -1061,7 +1078,7 @@ class Blade3D:
 
         for i in range(0,self.N_SECTIONS):
             upper_side,lower_side = split_curve(self.section_coordinates[i])
-            section_thickness,max_th_dist[i],lack_of_monotonicity_dist[i] = self.get_section_thickness_properties(upper_side,lower_side)
+            section_thickness,max_th_dist[i],lack_of_monotonicity_dist[i],dummy,dummy = self.get_section_thickness_properties(upper_side,lower_side)
             section_thickness_dist.append(section_thickness)            
         
         return section_thickness_dist,max_th_dist,lack_of_monotonicity_dist,r_coor

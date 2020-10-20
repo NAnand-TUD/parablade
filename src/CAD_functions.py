@@ -229,7 +229,7 @@ def get_bisectors(curve_1,curve_2,npoints=50):
     y_2_interpolant_der = y_2_interpolant.derivative(1)
 
     # Create a parametric basis for the curves
-    s = np.linspace(0.05, 0.95, npoints)
+    s = np.linspace(0., 1.,npoints)
     
     # Define the function to find the root of
     def equidistance_condition(s,x0,L,xp,yp,np,interpolant,der_interpolant):
@@ -289,7 +289,21 @@ def get_bisectors(curve_1,curve_2,npoints=50):
             yj = y_2_interpolant(xj)        
             tj,nj = get_curve_basis_spline(xj,y_2_interpolant_der)
             # Compute the radius of the circle
-            d = (xi-xj)/(ni[0]+nj[0])
+                
+            sum_nx = ni[0]+nj[0]
+            sum_ny = ni[1]+nj[1]
+            
+            # Prevent zero division with parallel normals
+            if np.isclose(sum_nx,0.):
+                d = (yi-yj)/sum_ny
+            elif np.isclose(sum_ny,0.):
+                d = (xi-xj)/sum_nx
+            else:
+                # These two expressions should give the same d, I take the average for numerical stability
+                d1 = (xi-xj)/sum_nx
+                d2 = (yi-yj)/sum_ny
+                d = 0.5*(d1+d2)
+            
             if d < 0.:
                 print('Bracketing: ' + str(zero_fun(0.)) +', '+ str(zero_fun(1.)))
                 print('Wrong solution to bisection problem!')
