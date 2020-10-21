@@ -30,7 +30,6 @@ import pdb                                              # Python debugging tool
 import copy                                             # Make a deep copy of an object
 from scipy.optimize import *                            # Optimization library
 import numpy as np                                      # Scientific computing library
-import multiprocessing                                  # Parallel computing                           
 try:
     import matplotlib as mpl                                # Plotting library
     import matplotlib.pyplot as plt
@@ -90,14 +89,7 @@ class BladeMatch:
         self.N_SECTIONS                 = self.IN["N_SECTIONS"][0]
         self.PRESCRIBED_BLADE_FILENAME  = self.IN["PRESCRIBED_BLADE_FILENAME"]
         self.plot_options               = plot_options
-        
-        # Optional argument
-        try:
-            self.Nprocs = int(self.IN["N_PROCS"][0])
-        except:
-            self.Nprocs = 1
-            
-
+                   
         # Create output directory
         os.system("rm -rf output_matching")
         os.mkdir("output_matching")
@@ -218,12 +210,21 @@ class BladeMatch:
     # ---------------------------------------------------------------------------------------------------------------- #
     # Match the (u,v) parametrization
     # ---------------------------------------------------------------------------------------------------------------- #
-    # Auxiliary function to call either sequentially in loops or in parallel
-    def loopFun(self,i,my_u,my_v):
+    def match_blade_uv(self):
+
+        """ Solve the blade matching problem for each prescibed point using (u,v) as independent variables """
+
+        # Initialize the arrays for the (u,v) parametrization
+        print('\n', 'Starting (u,v) parametrization matching...')
+        my_u = []
+        my_v = []
+        h = 1e-5
+
+        # Solve N independent optimization problems
+        for i in range(self.N_points):
+
         # Display the matching progress
         printProgress(i, self.N_points)
-        
-        h = 1e-5
   
         # Start the (u,v) matching from different initial values
         if self.NDIM == 2:
@@ -288,44 +289,12 @@ class BladeMatch:
 
         # Pick the global minimum
         index = int(np.argmin(my_fun))
-        my_u[i] = my_x[index][0]
-        my_v[i] = my_x[index][1]
-        
-    def __call__(self,i,my_u,my_v): 
-        self.loopFun(i,my_u,my_v)
-            
-
-
-    def match_blade_uv(self):
-
-        """ Solve the blade matching problem for each prescibed point using (u,v) as independent variables """
-
-        # Initialize the arrays for the (u,v) parametrization
-        print('\n', 'Starting (u,v) parametrization matching...')
-
-        # Solve N independent optimization problems
-        my_u = np.zeros(self.N_points,dtype=np.float64)
-        my_v = np.zeros(self.N_points,dtype=np.float64)
-        iterV = range(self.N_points)
-        if self.Nprocs > 1:
-            
-            # Create thetuple of arguments to be run by each pool instance
-            args = []
-            for i in iterV:
-                args.append((i,my_u,my_v))
-            
-            with multiprocessing.Pool(processes=self.Nprocs) as pool:
-                pool.starmap(self,args)
-            
-        elif self.Nprocs == 1:
-            for i in iterV:
-                self.loopFun(i,my_u,my_v)
-        
-
+            my_u.append(my_x[index][0])
+            my_v.append(my_x[index][1])
 
         # Update the class (u,v) parametrization
-        self.u = my_u.copy()
-        self.v = my_v.copy()
+        self.u = np.asarray(my_u)
+        self.v = np.asarray(my_v)
         self.coordinates_matched = self.blade_matched.get_surface_coordinates(self.u, self.v)
         print('\n', '(u,v) parametrization matching is finished...')
 
