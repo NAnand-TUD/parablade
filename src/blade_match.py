@@ -89,7 +89,7 @@ class BladeMatch:
         self.N_SECTIONS                 = self.IN["N_SECTIONS"][0]
         self.PRESCRIBED_BLADE_FILENAME  = self.IN["PRESCRIBED_BLADE_FILENAME"]
         self.plot_options               = plot_options
-                   
+
         # Create output directory
         os.system("rm -rf output_matching")
         os.mkdir("output_matching")
@@ -223,72 +223,72 @@ class BladeMatch:
         # Solve N independent optimization problems
         for i in range(self.N_points):
 
-        # Display the matching progress
-        printProgress(i, self.N_points)
-  
-        # Start the (u,v) matching from different initial values
-        if self.NDIM == 2:
-            my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900]
-            my_v0 = [0.500, 0.500, 0.500, 0.500, 0.500]
-            my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
-        else:
-            my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900, 0.100, 0.250, 0.500, 0.750, 0.900]
-            my_v0 = [0.250, 0.250, 0.250, 0.250, 0.250, 0.750, 0.750, 0.750, 0.750, 0.750]
-            my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
+            # Display the matching progress
+            printProgress(i, self.N_points)
 
-        # Add the converged solution from the previous iteration as initial guess
-        if self.iteration > 0:
-            my_u0.append(self.u[i])
-            my_v0.append(self.v[i])
-            my_bounds.append([(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)])
+            # Start the (u,v) matching from different initial values
+            if self.NDIM == 2:
+                my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900]
+                my_v0 = [0.500, 0.500, 0.500, 0.500, 0.500]
+                my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
+            else:
+                my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900, 0.100, 0.250, 0.500, 0.750, 0.900]
+                my_v0 = [0.250, 0.250, 0.250, 0.250, 0.250, 0.750, 0.750, 0.750, 0.750, 0.750]
+                my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
 
-        # Initialize lists to save the solution for each starting point
-        my_fun = []
-        my_x = []
+            # Add the converged solution from the previous iteration as initial guess
+            if self.iteration > 0:
+                my_u0.append(self.u[i])
+                my_v0.append(self.v[i])
+                my_bounds.append([(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)])
 
-        # Solve the optimization problem
-        for k in range(len(my_u0)):
-
-            # Optimization algorithm options
-            my_options = {'disp': False,
-                          'ftol': 1e-8,
-                          #'gtol': 1e-9,
-                          #'eps': np.
-                          # finfo(np.float64).eps ** (1 / 2),
-                          'maxiter': 1000}
+            # Initialize lists to save the solution for each starting point
+            my_fun = []
+            my_x = []
 
             # Solve the optimization problem
-            solution = minimize(fun=self.my_objective_function,
-                                x0=np.asarray([my_u0[k], my_v0[k]]),
-                                args=('uv_parametrization', i),
-                                method='L-BFGS-B',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
-                                jac=None,
-                                # hess=None,
-                                # hessp=None,
-                                bounds=my_bounds[k],
-                                # constraints=None,
-                                callback=None,
-                                options=my_options)
+            for k in range(len(my_u0)):
 
-            # Store the current solution
-            my_x.append(solution.x)
-            my_fun.append(solution.fun)
+                # Optimization algorithm options
+                my_options = {'disp': False,
+                              'ftol': 1e-8,
+                              #'gtol': 1e-9,
+                              #'eps': np.
+                              # finfo(np.float64).eps ** (1 / 2),
+                              'maxiter': 1000}
 
-        # Pick the global minimum
-        index = int(np.argmin(my_fun))
+                # Solve the optimization problem
+                solution = minimize(fun=self.my_objective_function,
+                                    x0=np.asarray([my_u0[k], my_v0[k]]),
+                                    args=('uv_parametrization', i),
+                                    method='L-BFGS-B',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
+                                    jac=None,
+                                    # hess=None,
+                                    # hessp=None,
+                                    bounds=my_bounds[k],
+                                    # constraints=None,
+                                    callback=None,
+                                    options=my_options)
+
+                # Store the current solution
+                my_x.append(solution.x)
+                my_fun.append(solution.fun)
+
+            # Pick the global minimum
+            index = int(np.argmin(my_fun))
             my_u.append(my_x[index][0])
             my_v.append(my_x[index][1])
 
