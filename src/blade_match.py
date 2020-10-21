@@ -30,6 +30,7 @@ import pdb                                              # Python debugging tool
 import copy                                             # Make a deep copy of an object
 from scipy.optimize import *                            # Optimization library
 import numpy as np                                      # Scientific computing library
+import multiprocessing                                  # Parallel computing                           
 try:
     import matplotlib as mpl                                # Plotting library
     import matplotlib.pyplot as plt
@@ -89,6 +90,13 @@ class BladeMatch:
         self.N_SECTIONS                 = self.IN["N_SECTIONS"][0]
         self.PRESCRIBED_BLADE_FILENAME  = self.IN["PRESCRIBED_BLADE_FILENAME"]
         self.plot_options               = plot_options
+        
+        # Optional argument
+        try:
+            self.Nprocs = self.IN["N_PROCS"]
+        except:
+            self.Nprocs = 1
+            
 
         # Create output directory
         os.system("rm -rf output_matching")
@@ -149,7 +157,7 @@ class BladeMatch:
               Each optimization problem is solved using different starting points to find the global minima of the
               error and avoid getting stuck in local minima
               This mode is useful to get (u,v) parametrization of the blade surface points of a mesh
-              (both structured and unstructured meshed can be matched)
+              (both structured and unstructured meshes can be matched)
 
         3) Automatic mode: matching_mode='DVs'
 
@@ -219,13 +227,12 @@ class BladeMatch:
         my_u = []
         my_v = []
         h = 1e-5
-
-        # Solve N independent optimization problems
-        for i in range(self.N_points):
-
+        
+        # Auxiliary function to call either sequentially in loops or in parallel
+        def loopFun(i,my_u,my_v):
             # Display the matching progress
             printProgress(i, self.N_points)
-
+  
             # Start the (u,v) matching from different initial values
             if self.NDIM == 2:
                 my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900]
@@ -289,12 +296,28 @@ class BladeMatch:
 
             # Pick the global minimum
             index = int(np.argmin(my_fun))
-            my_u.append(my_x[index][0])
-            my_v.append(my_x[index][1])
+            my_u[i] = my_x[index][0]
+            my_v[i] = my_x[index][1]
+            
+            return
+
+        # Solve N independent optimization problems
+        my_u=np.zeros(self.N_points,dtype=np.float64)
+        my_v=np.zeros(self.N_points,dtype=np.float64)
+        iterV = range(self.N_points)
+        if self.Nprocs > 1:
+            with multiprocessing.Pool(processes=self.Nprocs) as pool:
+                pool.map(loopFun,iterV,my_u,my_v)
+            
+        elif self.Nprocs == 1:
+            for i in iterV:
+                loopFun(i,my_u,my_v)
+        
+
 
         # Update the class (u,v) parametrization
-        self.u = np.asarray(my_u)
-        self.v = np.asarray(my_v)
+        self.u = my_u
+        self.v = my_v
         self.coordinates_matched = self.blade_matched.get_surface_coordinates(self.u, self.v)
         print('\n', '(u,v) parametrization matching is finished...')
 

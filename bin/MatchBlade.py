@@ -68,8 +68,8 @@ try:
     IN = ReadUserInput(INFile)
 except:
     raise Exception('\n\n\n''Something went wrong when reading the configuration file,exiting the program...'
-                    '\n\nTo call MakeBlade.py from terminal type:'
-                    '\n\tMakeBlade.py <configuration file name>')
+                    '\n\nTo call MatchBlade.py from terminal type:'
+                    '\n\tMatchBlade.py <configuration file name>')
 
 #---------------------------------------------------------------------------------------------#
 # Matching of a prescribed blade geometry
