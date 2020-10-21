@@ -93,7 +93,7 @@ class BladeMatch:
         
         # Optional argument
         try:
-            self.Nprocs = self.IN["N_PROCS"]
+            self.Nprocs = int(self.IN["N_PROCS"][0])
         except:
             self.Nprocs = 1
             
@@ -218,106 +218,114 @@ class BladeMatch:
     # ---------------------------------------------------------------------------------------------------------------- #
     # Match the (u,v) parametrization
     # ---------------------------------------------------------------------------------------------------------------- #
+    # Auxiliary function to call either sequentially in loops or in parallel
+    def loopFun(self,i,my_u,my_v):
+        # Display the matching progress
+        printProgress(i, self.N_points)
+        
+        h = 1e-5
+  
+        # Start the (u,v) matching from different initial values
+        if self.NDIM == 2:
+            my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900]
+            my_v0 = [0.500, 0.500, 0.500, 0.500, 0.500]
+            my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
+        else:
+            my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900, 0.100, 0.250, 0.500, 0.750, 0.900]
+            my_v0 = [0.250, 0.250, 0.250, 0.250, 0.250, 0.750, 0.750, 0.750, 0.750, 0.750]
+            my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
+                        [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
+
+        # Add the converged solution from the previous iteration as initial guess
+        if self.iteration > 0:
+            my_u0.append(self.u[i])
+            my_v0.append(self.v[i])
+            my_bounds.append([(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)])
+
+        # Initialize lists to save the solution for each starting point
+        my_fun = []
+        my_x = []
+
+        # Solve the optimization problem
+        for k in range(len(my_u0)):
+
+            # Optimization algorithm options
+            my_options = {'disp': False,
+                          'ftol': 1e-8,
+                          #'gtol': 1e-9,
+                          #'eps': np.
+                          # finfo(np.float64).eps ** (1 / 2),
+                          'maxiter': 1000}
+
+            # Solve the optimization problem
+            solution = minimize(fun=self.my_objective_function,
+                                x0=np.asarray([my_u0[k], my_v0[k]]),
+                                args=('uv_parametrization', i),
+                                method='L-BFGS-B',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
+                                jac=None,
+                                # hess=None,
+                                # hessp=None,
+                                bounds=my_bounds[k],
+                                # constraints=None,
+                                callback=None,
+                                options=my_options)
+
+            # Store the current solution
+            my_x.append(solution.x)
+            my_fun.append(solution.fun)
+
+        # Pick the global minimum
+        index = int(np.argmin(my_fun))
+        my_u[i] = my_x[index][0]
+        my_v[i] = my_x[index][1]
+        
+    def __call__(self,i,my_u,my_v): 
+        self.loopFun(i,my_u,my_v)
+            
+
+
     def match_blade_uv(self):
 
         """ Solve the blade matching problem for each prescibed point using (u,v) as independent variables """
 
         # Initialize the arrays for the (u,v) parametrization
         print('\n', 'Starting (u,v) parametrization matching...')
-        my_u = []
-        my_v = []
-        h = 1e-5
-        
-        # Auxiliary function to call either sequentially in loops or in parallel
-        def loopFun(i,my_u,my_v):
-            # Display the matching progress
-            printProgress(i, self.N_points)
-  
-            # Start the (u,v) matching from different initial values
-            if self.NDIM == 2:
-                my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900]
-                my_v0 = [0.500, 0.500, 0.500, 0.500, 0.500]
-                my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
-            else:
-                my_u0 = [0.100, 0.250, 0.500, 0.750, 0.900, 0.100, 0.250, 0.500, 0.750, 0.900]
-                my_v0 = [0.250, 0.250, 0.250, 0.250, 0.250, 0.750, 0.750, 0.750, 0.750, 0.750]
-                my_bounds = [[(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)],
-                             [(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)]]
-
-            # Add the converged solution from the previous iteration as initial guess
-            if self.iteration > 0:
-                my_u0.append(self.u[i])
-                my_v0.append(self.v[i])
-                my_bounds.append([(0.00 + h, 1.00 - h), (0.00 + h, 1.00 - h)])
-
-            # Initialize lists to save the solution for each starting point
-            my_fun = []
-            my_x = []
-
-            # Solve the optimization problem
-            for k in range(len(my_u0)):
-
-                # Optimization algorithm options
-                my_options = {'disp': False,
-                              'ftol': 1e-8,
-                              #'gtol': 1e-9,
-                              #'eps': np.
-                              # finfo(np.float64).eps ** (1 / 2),
-                              'maxiter': 1000}
-
-                # Solve the optimization problem
-                solution = minimize(fun=self.my_objective_function,
-                                    x0=np.asarray([my_u0[k], my_v0[k]]),
-                                    args=('uv_parametrization', i),
-                                    method='L-BFGS-B',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
-                                    jac=None,
-                                    # hess=None,
-                                    # hessp=None,
-                                    bounds=my_bounds[k],
-                                    # constraints=None,
-                                    callback=None,
-                                    options=my_options)
-
-                # Store the current solution
-                my_x.append(solution.x)
-                my_fun.append(solution.fun)
-
-            # Pick the global minimum
-            index = int(np.argmin(my_fun))
-            my_u[i] = my_x[index][0]
-            my_v[i] = my_x[index][1]
-            
-            return
 
         # Solve N independent optimization problems
-        my_u=np.zeros(self.N_points,dtype=np.float64)
-        my_v=np.zeros(self.N_points,dtype=np.float64)
+        my_u = np.zeros(self.N_points,dtype=np.float64)
+        my_v = np.zeros(self.N_points,dtype=np.float64)
         iterV = range(self.N_points)
         if self.Nprocs > 1:
+            
+            # Create thetuple of arguments to be run by each pool instance
+            args = []
+            for i in iterV:
+                args.append((i,my_u,my_v))
+            
             with multiprocessing.Pool(processes=self.Nprocs) as pool:
-                pool.map(loopFun,iterV,my_u,my_v)
+                pool.starmap(self,args)
             
         elif self.Nprocs == 1:
             for i in iterV:
-                loopFun(i,my_u,my_v)
+                self.loopFun(i,my_u,my_v)
         
 
 
         # Update the class (u,v) parametrization
-        self.u = my_u
-        self.v = my_v
+        self.u = my_u.copy()
+        self.v = my_v.copy()
         self.coordinates_matched = self.blade_matched.get_surface_coordinates(self.u, self.v)
         print('\n', '(u,v) parametrization matching is finished...')
 

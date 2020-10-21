@@ -263,7 +263,7 @@ def NACA_validation(t,m,p,c,file,save_plots=False,Npoints=500):
     max_th_index = np.where(section_thickness_dist[1]==max_th)
 
     out = str([t,m,p]) + "\t" + str(t) + "\t" + str(max_th.real) + "\t" + str(x_mxth) + "\t" \
-        + str(section_thickness_dist[0][max_th_index].real) + "\t" + lack_of_monotonicity + "\n" 
+        + str(section_thickness_dist[0][max_th_index].real) + "\t" + str(lack_of_monotonicity.real) + "\n" 
     file.write(out)
 
     ######################
@@ -419,12 +419,12 @@ def main():
     #---------------------------------------------------------------------------------------------#
     # Naca airfoil parameters
     #---------------------------------------------------------------------------------------------#
-    # t = [ 0.05, 0.1,0.2]
-    # m = [ 0.0,0.1,0.2]
-    # p = [0.2,0.5,0.8]
-    t = [0.1]
-    m = [0.0]
-    p = [0.2]
+    t = [ 0.05, 0.1,0.2]
+    m = [ 0.0,0.1,0.2]
+    p = [0.2,0.5,0.8]
+    # t = [0.1]
+    # m = [0.0]
+    # p = [0.2]
     c = 1.
     
     save_plots = False
