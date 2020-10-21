@@ -790,7 +790,7 @@ class Blade3D:
             Set variable='all' to compute the sensitivity with respect to all design variables
             Set variable=[name,number] to compute the sensitivity with respect to a single variable (used for debugging)
 
-        display : string
+        display_progress : string
             Set display_progress='yes' to print a bar showing the progress of the sensitivity computation
 
         Returns
@@ -1082,3 +1082,112 @@ class Blade3D:
             section_thickness_dist.append(section_thickness)            
         
         return section_thickness_dist,max_th_dist,lack_of_monotonicity_dist,r_coor
+    
+    def get_thickness_sensitivity(self, u, v, method='complex_step', step=1e-12, variable='all', display_progress='yes'):
+    
+        """ Compute the derivatives of the thickness properties (maximum and lack of monotonicity) wrt the design variables
+        
+        Parameters
+        ----------
+        u : ndarray with shape (N,)
+            Array containing the u-parameter used to evaluate the blade surface coordinates
+
+        v : ndarray with shape (N,)
+            Array containing the v-parameter used to evaluate the blade surface coordinates
+
+        method : string
+            Method used to compute the derivatives of the surface coordinates
+            Valid options: 'forward_finite_differences', 'central_finite_differences' or 'complex_step'
+
+        step : scalar
+            Step size used to compute the derivatives of the blade surface
+
+        variable : string or list
+            Set variable='all' to compute the sensitivity with respect to all design variables
+            Set variable=[name,number] to compute the sensitivity with respect to a single variable (used for debugging)
+
+        display_progress : string
+            Set display_progress='yes' to print a bar showing the progress of the sensitivity computation
+       
+        Returns
+        -------        
+        max_th_dist_der               : dictionary of ndarrays with shape (N_SECTIONS,N)
+                                        The keys of the dictionary are the names of the design variables
+                                        The entries of the dictionary are arrays that contain the derivative of the maximum thickness with
+                                        respect to each design variable
+       
+        lack_of_monotonicity_dist_der : dictionary of ndarrays with shape (N_SECTIONS,N)
+                                        The keys of the dictionary are the names of the design variables
+                                        The entries of the dictionary are arrays that contain the derivative of the lack of monotonicity with
+                                        respect to each design variable
+
+
+        Author: Ricardo Puente, 09/2020
+                r.puente@imperial.ac.uk
+        """
+        # Store the original set of control points in a deep-copy
+        control_points = copy.deepcopy(self.DVs_control_points)
+
+        # Fix the sensitivity overload bug having two dictionaries
+        max_th_dist_der = {}
+        lack_of_monotonicity_dist_der = {}
+        my_numbers = {}
+
+        # Get the name of the variable to compute derivatives and the number of control points
+        if variable == 'all':
+            my_keys = self.DVs_names
+            for key in my_keys:
+                my_numbers[key] = range(len(self.DVs_control_points[key]))
+        else:
+            my_keys = [variable[0]]
+            my_numbers[variable[0]] = [variable[1]]
+
+        # Initialize variables to print progress
+        total = len(my_keys)
+        count = 0
+
+        # Loop through all the keys and numbers (e.g. key=dist_1, number=0 means dist_1_0)
+        for key in my_keys:
+            count = count + 1
+            for number in my_numbers[key]:
+
+                if method == 'forward_finite_differences':
+                    self.DVs_control_points[key][number] = control_points[key][number]
+                    self.make_surface_interpolant()
+                    C_1 = self.get_surface_coordinates(u, v)
+                    self.DVs_control_points[key][number] = control_points[key][number] + step
+                    self.make_surface_interpolant()
+                    C_2 = self.get_surface_coordinates(u, v)
+                    surface_sensitivity[key + '_' + str(number)] = (C_2 - C_1) / step
+
+                elif method == 'central_finite_differences':
+                    self.DVs_control_points[key][number] = control_points[key][number] - step
+                    self.make_surface_interpolant()
+                    C_1 = self.get_surface_coordinates(u, v)
+                    self.DVs_control_points[key][number] = control_points[key][number] + step
+                    self.make_surface_interpolant()
+                    C_2 = self.get_surface_coordinates(u, v)
+                    surface_sensitivity[key + '_' + str(number)] = (C_2 - C_1) / (2 * step)
+
+                elif method == 'complex_step':
+                    self.DVs_control_points[key][number] = control_points[key][number] + step * 1j
+                    self.make_surface_interpolant()
+                    C = self.get_surface_coordinates(u, v)
+                    surface_sensitivity[key + '_' + str(number)] = np.imag(C) / step
+
+                else:
+                    raise Exception('Choose a valid differentiation method: '
+                                    '"forward_finite_differences", "central_finite_differences", or "complex_step"')
+
+
+                # Retrieve the original set of control points
+                self.DVs_control_points = copy.deepcopy(control_points)
+
+            # Print progress bar
+            if display_progress == 'yes':
+                printProgress(count, total)
+
+        # Retrieve the original interpolant
+        self.make_surface_interpolant()
+
+        return max_th_dist_der,lack_of_monotonicity_dist_der

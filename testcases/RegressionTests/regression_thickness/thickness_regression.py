@@ -195,6 +195,46 @@ def AirfoilMatch(INFile,airfoilToMatch,filesExist=False):
     matched_airfoil = Blade3D(INnew)
     
     return matched_airfoil
+
+def computeThicknessSensitivity(my_blade):
+    # Get machine epsilon for double-precision floating-point arithmetics
+    eps = np.finfo(np.float64).eps
+
+    ## Chose what design variables to compute
+    my_names = my_blade.DVs_names
+
+    # -------------------------------------------------------------------------------------------------------------------- #
+    # Main computations
+    # -------------------------------------------------------------------------------------------------------------------- #
+    # Compute the surface sensitivity for each design variable
+    print('{:>25} \t {:>20} \t {:>20} \t {:>20}'.format('Design variable', 'CS error', 'FFD error', 'CFD error'))
+    for key in my_names:
+        my_numbers = range(len(my_blade.DVs_control_points[key]))
+        for number in my_numbers:
+
+            # Assume that the surface sensitivities computed using a machine epsilon complex step are exact
+            grad_exact = my_blade.get_thickness_sensitivity(u, v, method='complex_step', variable=[key,number], display_progress='no', step=eps)
+            grad_exact = np.real(grad_exact[key + '_' + str(number)])
+
+            # Compute the surface sensitivity with different methods using a suitable stepsize
+            grad_CS  = my_blade.get_thickness_sensitivity(u, v, method='complex_step',               variable=[key,number], display_progress='no', step=1e-12)
+            grad_FFD = my_blade.get_thickness_sensitivity(u, v, method='forward_finite_differences', variable=[key,number], display_progress='no', step=eps**(1/2))
+            grad_CFD = my_blade.get_thickness_sensitivity(u, v, method='central_finite_differences', variable=[key,number], display_progress='no', step=eps**(1/3))
+
+            # Convert to real numbers
+            grad_CS = np.real(grad_CS[key + '_' + str(number)])
+            grad_FFD = np.real(grad_FFD[key + '_' + str(number)])
+            grad_CFD = np.real(grad_CFD[key + '_' + str(number)])
+
+            # Compute the error with respect to the "exact" derivative computation
+            error_CS = np.sum((grad_CS - grad_exact) ** 2)**(1/2)
+            error_FFD = np.sum((grad_FFD - grad_exact) ** 2)**(1/2)
+            error_CFD = np.sum((grad_CFD - grad_exact) ** 2)**(1/2)
+
+            # Print results
+            print('{:>25} \t {:>20.5e} \t {:>20.5e} \t {:>20.5e}'.format(key + '_' + str(number), error_CS, error_FFD, error_CFD))
+            
+    return dTh,dLOM
     
 
 def NACA_validation(t,m,p,c,file,figdir,save_plots=False,filesExist=False,Npoints=500):
@@ -259,12 +299,18 @@ def NACA_validation(t,m,p,c,file,figdir,save_plots=False,filesExist=False,Npoint
     section_thickness_dist_M,max_th_M,lack_of_monotonicity_M,camber_M,section_thickness_dist_der_M = airfoilMatch.get_section_thickness_properties(upper_side_M,lower_side_M)
     
     ##############################################
-    # Print the maximum thickness and its location
+    # Compute thickness sensitivity
+    ###############################################
+    dthda,dLOMda = computeThicknessSensitivity(airfoilMatch)
+    
+    ##############################################
+    # Print numerical output
     ###############################################
     max_th_index = np.where(section_thickness_dist[1]==max_th)
 
     out = str([t,m,p]) + "\t" + str(t) + "\t" + str(max_th.real) + "\t" + str(x_mxth) + "\t" \
-        + str(section_thickness_dist[0][max_th_index].real) + "\t" + str(lack_of_monotonicity.real) + "\n" 
+        + str(section_thickness_dist[0][max_th_index].real) + "\t" + str(lack_of_monotonicity.real) + \
+        + str(dthda) + "\t" + dLOMda + "\n" 
     file.write(out)
 
     ######################
@@ -448,12 +494,15 @@ def main():
     #---------------------------------------------------------------------------------------------#
     # Naca airfoil parameters
     #---------------------------------------------------------------------------------------------#
-    t = [ 0.05, 0.2]
-    m = [ 0.0,0.2]
-    p = [0.2,0.8]
+    # t = [ 0.05, 0.2]
+    # m = [ 0.0,0.2]
+    # p = [0.2,0.8]
+    t = [0.2]
+    m = [0.2]
+    p = [0.2]
     c = 1.
     
-    save_plots = True
+    save_plots = False
     
     # Set to true to avoid running the blade matching functions
     files_exist = False
@@ -462,10 +511,10 @@ def main():
     try:
         with cd(rootDir):
             file = open("thickness_regression_output.txt","w")
-            header = "Case (t,m,p)\tMax Th Analytical \t Max Th Numerical \t X(max_th) Analytical \t X(max_th) Numerical \t Lack of monotonicity \n"
+            header = "Case (t,m,p)\tMax Th Analytical \t Max Th Numerical \t X(max_th) Analytical \t X(max_th) Numerical \t Lack of monotonicity(LOM) \t dThmx/d_alpha \t dLOM/d_alpha \n"
             file.write(header)
     
-            # Create output figures directory
+            # Create output figures directory and remove old stuff
             figdir = "thickness_plots"
             rm(figdir)
             mkdir(figdir)   
