@@ -274,7 +274,7 @@ class BladeMatch:
                 solution = minimize(fun=self.my_objective_function,
                                     x0=np.asarray([my_u0[k], my_v0[k]]),
                                     args=('uv_parametrization', i),
-                                    method='L-BFGS-B',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
+                                    method='SLSQP',   # 'SLSQP' proved to be more robust and faster than 'L-BFGS-B'
                                     jac=None,
                                     # hess=None,
                                     # hessp=None,

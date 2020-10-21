@@ -25,6 +25,7 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.font_manager as fm 
 import inspect
+import shutil
 
 #---------------------------------------------------------------------------------------------#
 # Setting Environment
@@ -196,7 +197,7 @@ def AirfoilMatch(INFile,airfoilToMatch,filesExist=False):
     return matched_airfoil
     
 
-def NACA_validation(t,m,p,c,file,save_plots=False,Npoints=500):
+def NACA_validation(t,m,p,c,file,figdir,save_plots=False,filesExist=False,Npoints=500):
     
     #########################
     # Generate a NACA profile
@@ -252,7 +253,7 @@ def NACA_validation(t,m,p,c,file,save_plots=False,Npoints=500):
     naca_coords = np.zeros((2,len(xtotal)),dtype=float)
     naca_coords[0]=xtotal
     naca_coords[1]=ytotal
-    airfoilMatch = AirfoilMatch(INfile,naca_coords)
+    airfoilMatch = AirfoilMatch(INfile,naca_coords,filesExist)
     match_coords = airfoilMatch.section_coordinates[0]
     upper_side_M,lower_side_M = split_curve(match_coords)
     section_thickness_dist_M,max_th_M,lack_of_monotonicity_M,camber_M,section_thickness_dist_der_M = airfoilMatch.get_section_thickness_properties(upper_side_M,lower_side_M)
@@ -405,10 +406,38 @@ def NACA_validation(t,m,p,c,file,save_plots=False,Npoints=500):
 
         
     if save_plots:
-        plt.savefig(figname,format=self.figFormat,dpi=self.dpi)
+        path=os.getcwd()
+        full_path = path + "/" + figdir
+        figname = full_path + "/NACA"+ str(int(100.*m))+ str(int(10.*p))+str(int(100.*t))+"_thickness.eps"
+        plt.savefig(figname,format="eps",dpi=600,bbox_inches = 'tight')
     else:
         plt.show()
     
+    
+class cd:
+    """ Context manager fo changing the current working directory"""
+    def __init__(self,newPath):
+        self.newPath = os.path.expanduser(newPath)
+        
+    def __enter__(self):
+        self.savedPath = os.getcwd()
+        os.chdir(self.newPath)
+        
+    def __exit__(self,etype,value,traceback):
+        os.chdir(self.savedPath)
+        
+def mkdir(path):
+    try:
+        os.mkdir(path)
+    except OSError:
+        print("Creation of directory %s failed" % path)
+        
+def rm(path):
+    try:
+        shutil.rmtree(path)
+    except OSError:
+        print("Removal of directory %s failed" % path)
+
 
 def main():
     #---------------------------------------------------------------------------------------------#
@@ -419,33 +448,44 @@ def main():
     #---------------------------------------------------------------------------------------------#
     # Naca airfoil parameters
     #---------------------------------------------------------------------------------------------#
-    t = [ 0.05, 0.1,0.2]
-    m = [ 0.0,0.1,0.2]
-    p = [0.2,0.5,0.8]
-    # t = [0.1]
-    # m = [0.0]
-    # p = [0.2]
+    t = [ 0.05, 0.2]
+    m = [ 0.0,0.2]
+    p = [0.2,0.8]
     c = 1.
     
-    save_plots = False
+    save_plots = True
     
-    file = open("thickness_regression_output.txt","w")
-    header = "Case (t,m,p)\tMax Th Analytical \t Max Th Numerical \t X(max_th) Analytical \t X(max_th) Numerical \t Lack of monotonicity \n"
-    file.write(header)
+    # Set to true to avoid running the blade matching functions
+    files_exist = False
     
+    rootDir = os.getcwd()
     try:
-        for ti in t:
-            for mi in m:
-                for pi in p:
-                    NACA_validation(ti,mi,pi,c,file,save_plots)
+        with cd(rootDir):
+            file = open("thickness_regression_output.txt","w")
+            header = "Case (t,m,p)\tMax Th Analytical \t Max Th Numerical \t X(max_th) Analytical \t X(max_th) Numerical \t Lack of monotonicity \n"
+            file.write(header)
+    
+            # Create output figures directory
+            figdir = "thickness_plots"
+            rm(figdir)
+            mkdir(figdir)   
+
+            for ti in t:
+                for mi in m:
+                    for pi in p:
+                        NACA_validation(ti,mi,pi,c,file,figdir,save_plots,files_exist)
+                        
+            file.close()
+                        
     except Exception as ex:
+        file.close()
         template = "An exception of type {0} occurred. Arguments:\n{1!r}"
         message = template.format(type(ex).__name__, ex.args)
         print(message)
         message = "Raised in %s" % inspect.trace()
         print(message)
                 
-    file.close()
+
 
 
 if __name__== "__main__":
