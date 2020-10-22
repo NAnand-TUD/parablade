@@ -41,7 +41,6 @@ from common import PrintBanner
 from config import *
 from blade_3D import Blade3D
 from blade_match import BladeMatch
-from blade_output import BladeOutput
 from CAD_functions import split_curve
 
 # Rebuild the matplotlib font cache
@@ -156,7 +155,7 @@ def NACA_4_digit(t,m,p,c,Npoints=500):
 
 def AirfoilMatch(INFile,airfoilToMatch,filesExist=False):
 
-    # Write the airforil to be matched in a file    
+    # Write the airfoil to be matched in a file    
     coordsFileName = "naca.txt"
     
     coordsFile = open(coordsFileName,'w')
@@ -168,7 +167,7 @@ def AirfoilMatch(INFile,airfoilToMatch,filesExist=False):
     
     # Create BladeMatch object
     if filesExist==False:
-        options = {'view_xy'            : 'no',    # 2D Recommended
+        options = {'view_xy'            : 'no',     # 2D Recommended
                    'view_xR'            : 'no',     # 3D Recommended
                    'view_yz'            : 'no',     # 3D Optional
                    'view_3D'            : 'no',     # 3D Recommended
@@ -243,44 +242,22 @@ def NACA_validation(t,m,p,c,file,figdir,save_plots=False,filesExist=False,Npoint
     # Generate a NACA profile
     #########################
 
-
     x_up,y_up,x_dw,y_dw,xc,yc,th,dth,x_mxth = NACA_4_digit(t,m,p,c,Npoints)
+    
+    xtotal = np.concatenate((x_up,np.flip(x_dw)), axis=0)
+    ytotal = np.concatenate((y_up,np.flip(y_dw)), axis=0)
+    naca_coords = np.zeros((2,len(xtotal)),dtype=float)
+    naca_coords[0]=xtotal
+    naca_coords[1]=ytotal
+    
+    upper_side,lower_side = split_curve(naca_coords)
+    
 
     #####################################
     # Compute the camber line numerically
-    ######################################
+    ######################################       
     
-    # Check for strictly increasing sets of points or the thickness calculation will fail
-    def checkIfStriclyIncreasing(L):
-        return all(x<y for x, y in zip(L, L[1:]))
-    
-    def fixCoordinates(x,y):
-    
-        xs=x.copy()
-        ys=y.copy()
-        if checkIfStriclyIncreasing(x)==False:
-            xs = x[1:]
-            ys = y[1:]
-            fixCoordinates(xs,ys)
-            
-        return xs,ys
-        
-       
-   
-    x_up,y_up = fixCoordinates(x_up,y_up)
-    x_dw,y_dw = fixCoordinates(x_dw,y_dw)  
-    
-    
-    section_upper_side_list = []
-    section_upper_side_list.append(x_up)
-    section_upper_side_list.append(y_up)
-    section_lower_side_list = []
-    section_lower_side_list.append(x_dw)
-    section_lower_side_list.append(y_dw)
-
-    section_upper_side = np.array(section_upper_side_list)
-    section_lower_side = np.array(section_lower_side_list)
-    section_thickness_dist,max_th,lack_of_monotonicity,camber,section_thickness_dist_der = Blade3D.get_section_thickness_properties(section_upper_side,section_lower_side)  
+    section_thickness_dist,max_th,lack_of_monotonicity,camber,section_thickness_dist_der = Blade3D.get_section_thickness_properties(upper_side,lower_side)  
  
     #####################################
     # Match airfoil shape
@@ -288,11 +265,7 @@ def NACA_validation(t,m,p,c,file,figdir,save_plots=False,filesExist=False,Npoint
     
     # Build an array with the airfoil coordinates
     INfile = "Template.cfg"
-    xtotal = np.concatenate((x_up,np.flip(x_dw)), axis=0)
-    ytotal = np.concatenate((y_up,np.flip(y_dw)), axis=0)
-    naca_coords = np.zeros((2,len(xtotal)),dtype=float)
-    naca_coords[0]=xtotal
-    naca_coords[1]=ytotal
+
     airfoilMatch = AirfoilMatch(INfile,naca_coords,filesExist)
     match_coords = airfoilMatch.section_coordinates[0]
     upper_side_M,lower_side_M = split_curve(match_coords)
@@ -463,7 +436,7 @@ def NACA_validation(t,m,p,c,file,figdir,save_plots=False,filesExist=False,Npoint
     
     
 class cd:
-    """ Context manager fo changing the current working directory"""
+    """ Context manager for changing the current working directory"""
     def __init__(self,newPath):
         self.newPath = os.path.expanduser(newPath)
         
@@ -496,15 +469,15 @@ def main():
     #---------------------------------------------------------------------------------------------#
     # Naca airfoil parameters
     #---------------------------------------------------------------------------------------------#
-    # t = [ 0.05, 0.2]
-    # m = [ 0.0,0.2]
-    # p = [0.2,0.8]
-    t = [0.1]
-    m = [0.1]
-    p = [0.2]
+    t = [ 0.05, 0.2]
+    m = [ 0.0,0.2]
+    p = [0.2,0.8]
+    # t = [0.1]
+    # m = [0.1]
+    # p = [0.8]
     c = 1.
     
-    save_plots = False
+    save_plots = True
     
     # Set to true to avoid running the blade matching functions
     files_exist = False
