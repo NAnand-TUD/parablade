@@ -18,7 +18,7 @@ import matplotlib.pyplot as plt
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
 sys.path.append(os.getcwd() + '/../')
-from CAD_functions import BSplineCurve
+from parablade.CAD_functions import BSplineCurve
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

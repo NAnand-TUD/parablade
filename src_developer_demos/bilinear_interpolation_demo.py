@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-""" Bicubic interpolation demonstration script """
+""" Bilinear interpolation demonstration script """
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Import general packages
@@ -12,15 +12,15 @@ import time
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 from scipy.interpolate import RectBivariateSpline
+from mpl_toolkits.mplot3d import Axes3D
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
 sys.path.append(os.getcwd() + '/../')
-from interpolation_functions import BicubicInterpolation
+from parablade.interpolation_functions import BilinearInterpolation
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
@@ -58,25 +58,25 @@ yq = np.linspace(a, b, ny)
 # SciPy interpolation on a regular grid
 # -------------------------------------------------------------------------------------------------------------------- #
 time_start = time.time()
-interpolant = RectBivariateSpline(x, y, F, kx=3, ky=3, s=0)
+interpolant = RectBivariateSpline(x, y, F, kx=1, ky=1, s=0)
 Fq = interpolant(xq, yq)
 [Xq, Yq] = np.meshgrid(xq, yq, indexing='ij')
-error = np.real(np.asscalar(np.sum((Fq - my_func(Xq, Yq))**2)**(1/2)/(nx*ny)))
+error = np.asscalar(np.sum((Fq - my_func(Xq, Yq))**2)**(1/2)/(nx*ny))
 print('SciPy interpolation: Error %(my_error).6e / Elapsed time %(my_time).6f seconds' % {'my_error': error, 'my_time': time.time() - time_start})
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
-# ParaBlade bicubic interpolation
+# ParaBlade bilinear interpolation
 # -------------------------------------------------------------------------------------------------------------------- #
 # Reshape the query points into 1D arrays
 time_start = time.time()
 xq = Xq.flatten()
 yq = Yq.flatten()
-f_interpolator = BicubicInterpolation(x, y, F)
-fq = np.real(f_interpolator(xq,yq))
+f_interpolator = BilinearInterpolation(x, y, F)
+fq = f_interpolator(xq, yq)
 
 # Evaluate the interpolation error and running time
-error = np.real(np.asscalar(np.sum((fq - my_func(xq, yq))**2)**(1/2)/(nx*ny)))
+error = np.asscalar(np.sum((fq - my_func(xq, yq))**2)**(1/2)/(nx*ny))
 print('ParaBlade interpolation: Error %(my_error).6e / Elapsed time %(my_time).6f seconds' % {'my_error': error, 'my_time': time.time() - time_start})
 
 
@@ -115,14 +115,11 @@ ax.zaxis.set_rotate_label(False)
 # Plot the the original function as a surface
 surf = ax.plot_surface(X, Y, F, alpha=0.5, color='b', linewidth=0, shade='no')
 
-# # Plot the Scipy interpolated values as a cloud of points
-# ax.plot(Xq.flatten(), Yq.flatten(), Fq.flatten() ,color='b', linestyle=' ', marker='o' ,markersize=1, markerfacecolor='b')
+# Plot the Scipy interpolated values as a cloud of points
+ax.plot(Xq.flatten(), Yq.flatten(), Fq.flatten() ,color='b', linestyle=' ', marker='o' ,markersize=1, markerfacecolor='b')
 
-# Plot my bicubic interpolated values as a cloud of points
+# Plot my bilinear interoplated values as a cloud of points
 ax.plot(xq, yq, fq ,color='r', linestyle=' ', marker='o' ,markersize=1, markerfacecolor='r')
-
-# Adjust pad
-plt.tight_layout(pad=5.0, w_pad=None, h_pad=None)
 
 # Show plot
 plt.show()

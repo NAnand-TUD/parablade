@@ -20,7 +20,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
 sys.path.append(os.getcwd() + '/../')
-from CAD_functions import get_arc_length
+from parablade.CAD_functions import get_arc_length
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

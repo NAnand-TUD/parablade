@@ -18,16 +18,16 @@ import matplotlib.pyplot as plt
 # Importing user-defined packages
 #----------------------------------------------------------------------------------------------------------------------#
 sys.path.append(os.getcwd() + '/../')
-from blade_2D_camber_thickness import Blade2DCamberThickness
+from parablade.blade_2D_camber_thickness import Blade2DCamberThickness
 
 
 #----------------------------------------------------------------------------------------------------------------------#
 # Define the section design variables
 #----------------------------------------------------------------------------------------------------------------------#
 design_variables = {}
-design_variables['stagger'] = -45 * np.pi / 180
-design_variables['theta_in'] = +30 * np.pi / 180
-design_variables['theta_out'] = -70 * np.pi / 180
+design_variables['stagger'] = -45 * np.pi 
+design_variables['theta_in'] = +30 * np.pi 
+design_variables['theta_out'] = -70 * np.pi 
 design_variables['radius_in'] = 0.05
 design_variables['radius_out'] = 0.01
 design_variables['dist_in'] = 0.60
