@@ -171,11 +171,15 @@ sudo pip3 install pytecplot
 Add the tecplot libraries in your LIBRARY_PATH. Follow the instruction on pytecplot page. Link [https://www.tecplot.com/docs/pytecplot/install.html#id2]  
 Important: Mac users please visit above link and read about MAC DYLD_LIBRARY_PATH
 # Install
-Run the command below
+Run the command below(win or linux)
 ```
-RunMe.sh
+cd PARABLADE
+python setup.py sdist
+python setup.py install
 ```
-and follow the instructions to add the parablade bin files in your terminal environment.
+# Usage
+
+Ref the src_developer_demos
 
 # Development team
 

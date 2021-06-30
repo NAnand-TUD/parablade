@@ -18,8 +18,8 @@ import matplotlib.pyplot as plt
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
 sys.path.append(os.getcwd() + '/../')
-from CAD_functions import BSplineCurve
-from interpolation_functions import TransfiniteInterpolation
+from parablade.CAD_functions import BSplineCurve
+from parablade.interpolation_functions import TransfiniteInterpolation
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Meridional channel parametrization
