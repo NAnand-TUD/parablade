@@ -42,12 +42,12 @@ sys.path.append(BLADE_HOME+'/common/')
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from common import printProgress
-from config import ReadUserInput
-from CAD_functions import *
-from interpolation_functions import *
-from blade_2D_connecting_arcs import Blade2DConnectingArcs
-from blade_2D_camber_thickness import Blade2DCamberThickness
+from common.common import printProgress
+from common.config import ReadUserInput
+from src.CAD_functions import *
+from src.interpolation_functions import *
+from src.blade_2D_connecting_arcs import Blade2DConnectingArcs
+from src.blade_2D_camber_thickness import Blade2DCamberThickness
 
 
 #----------------------------------------------------------------------------------------------------------------------#

@@ -24,6 +24,7 @@
 #---------------------------------------------------------------------------------------------#
 # Importing general packages
 #---------------------------------------------------------------------------------------------#
+from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 import pdb
@@ -41,11 +42,11 @@ sys.path.append(BLADE_HOME+'/common/')
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from common import *
-from config import *
-from blade_3D import Blade3D
-from blade_plot import BladePlot
-from blade_output import BladeOutput
+from common.common import *
+from common.config import *
+from src.blade_3D import Blade3D
+from src.blade_plot import BladePlot
+from src.blade_output import BladeOutput
 
 #---------------------------------------------------------------------------------------------#
 # Print ParaBlade Banner

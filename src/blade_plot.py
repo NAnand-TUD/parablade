@@ -41,8 +41,8 @@ sys.path.append(BLADE_HOME+'/common/')
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from config import ReadUserInput
-from blade_3D import Blade3D
+from common.config import ReadUserInput
+from src.blade_3D import Blade3D
 
 
 #----------------------------------------------------------------------------------------------------------------------#
