@@ -35,8 +35,6 @@ import numpy as np
 # Setting Environment
 #---------------------------------------------------------------------------------------------#
 BLADE_HOME = os.environ["BLADE_HOME"]
-sys.path.append(BLADE_HOME+'/src/')
-sys.path.append(BLADE_HOME+'/common/')
 
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
