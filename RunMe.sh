@@ -10,7 +10,8 @@ echo "****************************************\n\n"
 echo "Add Following in your .bashrc\n"
 echo "\texport BLADE_HOME="$HOME
 echo "\texport BIN="$BLADE
-echo "\tPATH=\$PATH:\$BIN\n\n"
+echo "\tPATH=\$PATH:\$BIN\n"
+echo "\tPYTHONPATH=\$PYTHONPATH:\$BLADE_HOME\n\n"
 echo "*************************************\n\n"
 
 PYTHON3=$(which python3)

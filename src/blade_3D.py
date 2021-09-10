@@ -212,6 +212,11 @@ class Blade3D:
     Nu                          = None
     Nv                          = None
 
+    BODY_FORCE                  = False
+    camberline_interpolant      = None
+    camber_coordinates          = None
+    camber_normals              = None
+
     def __init__(self, IN, UV=None):
 
         # Declare input variables as instance variables
@@ -223,6 +228,14 @@ class Blade3D:
         self.PARAMETRIZATION_TYPE   = IN["PARAMETRIZATION_TYPE"]
         self.OPERATION_TYPE         = IN['OPERATION_TYPE']
         self.PLOT_FORMAT            = IN["PLOT_FORMAT"]
+        try:
+            if IN["BODY-FORCE"] == "YES":
+                self.BODY_FORCE = True
+        except:
+            self.BODY_FORCE         = False
+
+        if self.BODY_FORCE and self.PARAMETRIZATION_TYPE != 'CAMBER_THICKNESS':
+            raise Exception('Body-Force Model blade parameters can only be generated with CAMBER_THICKNESS parameterization')
 
         # Check the number of sections
         if self.N_SECTIONS < 2: raise Exception('It is necessary to use at least 2 sections to generate the blade')
@@ -242,6 +255,10 @@ class Blade3D:
 
         self.make_surface_interpolant(interp_method='bilinear')
 
+        if self.BODY_FORCE:
+            print("Making camberline interpolant")
+            self.make_camber_interpolant(interp_method='bilinear')
+
     # ---------------------------------------------------------------------------------------------------------------- #
     # Generate the blade geometry and/or sensitities
     # ---------------------------------------------------------------------------------------------------------------- #
@@ -256,6 +273,12 @@ class Blade3D:
             self.surface_coordinates = self.get_surface_coordinates(self.u, self.v)
             self.make_hub_surface()
             self.make_shroud_surface()
+            if self.BODY_FORCE:
+                self.camber_coordinates = self.get_camber_coordinates(self.u, self.v)
+                print("Starting camberline normals computation...", end='         ')
+                self.camber_normals = self.get_camber_normals(self.u, self.v, method='complex_step')
+                print("Done!")
+
 
         elif self.OPERATION_TYPE == 'SENSITIVITY':
 
@@ -453,7 +476,7 @@ class Blade3D:
         coordinates for any input (u,v) parametrization
 
         """
-
+        
         # Update the geometry before creating the interpolant
         self.get_DVs_functions()            # First update the functions that return design variables
         self.make_meridional_channel()      # Then update the functions that return the meridional channel coordinates
@@ -485,6 +508,37 @@ class Blade3D:
         # Create the surface interpolant using a lambda function to combine the (x,y,z) interpolants
         self.surface_interpolant = lambda u, v: np.asarray((x_function(u, v), y_function(u, v), z_function(u, v)))
 
+    def make_camber_interpolant(self, interp_method='bilinear'):
+        # Update the geometry before creating the interpolant
+        self.get_DVs_functions()  # First update the functions that return design variables
+        self.make_meridional_channel()  # Then update the functions that return the meridional channel coordinates
+
+        # Compute the coordinates of several blade sections
+        # The (u,v) parametrization used to compute the blade sections must be regular (necessary for interpolation)
+        num_points_section = 500
+        u_interp = np.linspace(0.00, 1, num_points_section)
+        v_interp = np.linspace(0.00, 1, self.N_SECTIONS)
+        S_interp = np.zeros((3, num_points_section, self.N_SECTIONS), dtype=complex)
+        for k in range(self.N_SECTIONS):
+            S_interp[..., k] = self.get_camberline_coordinates(u_interp, v_interp[k])
+
+        # Create the interpolator objects for the (x,y,z) coordinates
+        if interp_method == 'bilinear':
+            x_function = BilinearInterpolation(u_interp, v_interp, S_interp[0, ...])
+            y_function = BilinearInterpolation(u_interp, v_interp, S_interp[1, ...])
+            z_function = BilinearInterpolation(u_interp, v_interp, S_interp[2, ...])
+
+        elif interp_method == 'bicubic':
+            # There seems to be a problem with bicubic interpolation, the output is wiggly
+            x_function = BicubicInterpolation(u_interp, v_interp, S_interp[0, ...])
+            y_function = BicubicInterpolation(u_interp, v_interp, S_interp[1, ...])
+            z_function = BicubicInterpolation(u_interp, v_interp, S_interp[2, ...])
+
+        else:
+            raise Exception('Choose a valid interpolation method: "bilinear" or "bicubic"')
+
+        # Create the surface interpolant using a lambda function to combine the (x,y,z) interpolants
+        self.camberline_interpolant = lambda u, v: np.asarray((x_function(u, v), y_function(u, v), z_function(u, v)))
 
     def make_meridional_channel(self):
 
@@ -598,6 +652,152 @@ class Blade3D:
 
         return section_coordinates
 
+    def get_camber_coordinates(self, u, v):
+        # Check that the query (u,v) parametrization is within the interpolation range
+        if np.any(u < 0) or np.any(u > 1) or np.any(v < 0) or np.any(v > 1):
+            raise ValueError('Extrapolation of the (u,v) parametrization is not supported')
+
+        # Compute the surface coordinates by interpolation
+        camber_coordinates = self.camberline_interpolant(u, v)
+
+        return camber_coordinates
+
+    def get_camberline_coordinates(self, u_section, v_section):
+
+        """ Compute the coordinates of the current blade section
+
+        Parameters
+        ----------
+        u_section : ndarray with shape (Nu,)
+            Array containing the u-parameter used to evaluate section coordinates
+
+        v_section : scalar
+            Scalar containing the v-parameter of the current blade span
+
+        Returns
+        -------
+        section_coordinates : ndarray with shape (3, Nu)
+            Array containing the (x,y,z) coordinates of the current blade section
+
+        """
+
+        # Get the design variables of the current blade section
+        section_variables = {}
+        for k in self.DVs_names_2D:
+            section_variables[k] = self.DVs_functions[k](v_section)
+
+        # Compute the coordinates of a blade section with an unitary meridional chord
+
+        camber_coordinates = Blade2DCamberThickness(section_variables).get_camberline_coordinates(u_section)
+
+        # Rename the section coordinates
+        x = camber_coordinates[0, :]                   # x corresponds to the meridional direction
+        y = camber_coordinates[1, :]                   # y corresponds to the tangential direction
+
+
+        # Ensure that the x-coordinates are between zero and one (actually between zero+eps and one-eps)
+        uu_section = (x - np.amin(x) + 1e-12)/(np.amax(x) - np.amin(x) + 2e-12)
+
+        # Obtain the x-z coordinates by transfinite interpolation of the meridional channel contour
+        x = self.get_meridional_channel_x(uu_section, v_section)       # x corresponds to the axial direction
+        z = self.get_meridional_channel_z(uu_section, v_section)       # x corresponds to the radial direction
+
+        # Create a single-variable function with the coordinates of the meridional channel
+        x_func = lambda u: self.get_meridional_channel_x(u, v_section)
+        z_func = lambda u: self.get_meridional_channel_z(u, v_section)
+        m_func = lambda u: np.concatenate((x_func(u), z_func(u)), axis=0)
+
+        # Compute the arc length of the meridional channel (streamline)
+        arc_length = get_arc_length(m_func, 0.0 + 1e-6, 1.0 - 1e-6)
+
+        # Compute the y-coordinates of the current blade section by scaling the unitary blade
+        y = self.DVs_functions["y_leading"](v_section) + y * arc_length
+
+        # Transform the blade coordinates to cartesian coordinates
+        if self.CASCADE_TYPE == "LINEAR":
+            X = x
+            Y = y
+            Z = z
+        elif self.CASCADE_TYPE == "ANNULAR":
+            X = x
+            Y = z*np.sin(y/z)
+            Z = z*np.cos(y/z)
+        else:
+            raise Exception('Choose a valid cascade type: "LINEAR" or "ANNULAR"')
+
+        # Piece together the X-Y-Z coordinates
+        camber_coordinates = np.concatenate((X, Y, Z), axis=0)
+
+        return camber_coordinates
+
+    def get_camber_normals(self, u, v, method='complex_step', step=1e-12):
+
+        """ Compute unitary vectors normal to the blade surface
+
+         Parameters
+        ----------
+        u : ndarray with shape (N,)
+            Array containing the u-parameter used to evaluate the blade surface coordinates
+
+        v : ndarray with shape (N,)
+            Array containing the v-parameter used to evaluate the blade surface coordinates
+
+        method : string
+            Method used to compute the derivatives of the surface coordinates
+            Valid options: 'forward_finite_differences', 'central_finite_differences' or 'complex_step'
+
+        step : scalar
+            Step size used to compute the derivatives of the blade surface
+
+        Returns
+        -------
+        camber_normals : ndarray with shape (3, N)
+            Array containing the unitary vectors normal to the blade surface
+            The first dimension spans the ´(x,y,z)´ components
+            The second dimension spans the (u,v) parametrization sample points
+
+        """
+
+        # Compute a pair of tangent vectors by differentiation of the surface coordinates with respect to (u,v)
+        if method == 'forward_finite_differences':
+            C = self.get_camber_coordinates(u, v)
+            C_u = self.get_camber_coordinates(u + step, v)
+            C_v = self.get_camber_coordinates(u, v + step)
+            T_u = (C_u - C) / step                              # Forward finite differences in u
+            T_v = (C_v - C) / step                              # Forward finite differences in v
+            N = np.cross(T_u, T_v, axisa=0, axisb=0, axisc=0)   # Normal vector as cross product of two tangent vectors
+            norm = np.sum(N**2, axis=0)**(1/2)                  # 2-norm of the normal vectors
+            camber_normals = -N / norm                         # Unitary normal vector (fix sign to point outwards)
+
+        elif method == 'central_finite_differences':
+            C_uv = self.get_camber_coordinates(u, v)
+            C_u1 = self.get_camber_coordinates(u - step, v)
+            C_u2 = self.get_camber_coordinates(u + step, v)
+            C_v1 = self.get_camber_coordinates(u, v - step)
+            C_v2 = self.get_camber_coordinates(u, v + step)
+            T_u = (C_u2 - C_u1) / (2*step)                      # Central finite differences in u
+            T_v = (C_v2 - C_v1) / (2*step)                      # Central finite differences in v
+
+            N = np.cross(T_u, T_v, axisa=0, axisb=0, axisc=0)   # Normal vector as cross product of two tangent vectors
+            norm = np.sum(N**2, axis=0)**(1/2)                  # 2-norm of the normal vectors
+            camber_normals = -N / norm                         # Unitary normal vector (fix sign to point outwards)
+            
+
+        elif method == 'complex_step':
+            C_u = self.get_camber_coordinates(u + step*1j, v)
+            C_v = self.get_camber_coordinates(u, v + step*1j)
+            T_u = np.imag(C_u) / step                           # Complex step in u
+            T_v = np.imag(C_v) / step
+            # Complex step in v
+            N = np.cross(T_u, T_v, axisa=0, axisb=0, axisc=0)   # Normal vector as cross product of two tangent vectors
+            norm = np.sum(N**2, axis=0)**(1/2)                  # 2-norm of the normal vectors
+            camber_normals = -N / norm                         # Unitary normal vector (fix sign to point outwards)
+
+        else:
+            raise Exception('Choose a valid differentiation method: '
+                            '"forward_finite_differences", "central_finite_differences", or "complex_step"')
+
+        return camber_normals
 
     # ---------------------------------------------------------------------------------------------------------------- #
     # Compute the unitary vectors normal to the blade surface
@@ -667,7 +867,7 @@ class Blade3D:
 
         return surface_normals
 
-
+        
     # ---------------------------------------------------------------------------------------------------------------- #
     # Compute the derivatives of the surface coordinates with respect to the design variables
     # ---------------------------------------------------------------------------------------------------------------- #

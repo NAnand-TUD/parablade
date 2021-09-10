@@ -236,6 +236,8 @@ class BladeOutput:
         else:
             raise Exception('The number of dimensions must be "2" or "3"')
 
+        if self.blade_in.BODY_FORCE:
+            self.make_BFM_inputfile()
 
     def make_UMG2_meshfile(self):
 
@@ -294,3 +296,74 @@ class BladeOutput:
         shroud_file.close()
 
         print('Done!')
+
+    def make_BFM_inputfile(self):
+        axial = np.array([[1], [0], [0]])
+        n_points = 100
+        n_sections = self.blade_in.N_SECTIONS
+        h = 1e-5
+        u = 0.5 - 0.5*np.cos(np.linspace(0.00 + h, np.pi - h, n_points))
+        v = np.linspace(0.00 + h, 1.00 - h, n_sections)
+        print('Writing BFM input file...', end='                        ')
+
+        # Opening BFM input file
+        BFM_input_file = open(self.full_path + "BFM_input.drg", 'w')
+        BFM_input_file.write("<header>\n\n")
+        BFM_input_file.write("[version inputfile]\n")
+        BFM_input_file.write("1.0.0\n\n")
+        BFM_input_file.write("[number of blade rows]\n")
+        BFM_input_file.write('%i\n\n' % (1))
+        BFM_input_file.write("[row blade count]\n")
+        BFM_input_file.write('%i\n\n' % (self.blade_in.N_BLADES))
+        BFM_input_file.write("[rotation factor]\n")
+        BFM_input_file.write('%i\n\n' % (0))
+        BFM_input_file.write("[number of tangential locations]\n")
+        BFM_input_file.write('%i\n\n' % (1))
+        BFM_input_file.write("[number of data entries in chordwise direction]\n")
+        BFM_input_file.write('%i\n\n' % (n_points))
+        BFM_input_file.write("[number of data entries in spanwise direction]\n")
+        BFM_input_file.write('%i\n\n' % (n_sections))
+        
+        BFM_input_file.write("[variable names]\n")
+        BFM_input_file.write("1:axial_coordinate 2:radial_coordinate 3:n_ax 4:n_tang 5:n_rad 6:blockage_factor 7:x_LE 8:axial_chord\n\n")
+        BFM_input_file.write("</header>\n\n")
+        BFM_input_file.write("<data>\n")
+    
+        BFM_input_file.write("<blade row>\n")
+        BFM_input_file.write("<tang section>\n")
+        for j in range(len(v)):
+            camber_normals = np.real(self.blade_in.get_camber_normals(u=u, v=v[j]*np.ones(n_points)))
+            camber_coords = np.real(self.blade_in.get_camber_coordinates(u=u, v=v[j]*np.ones(n_points)))
+
+            unit_axial = axial * np.ones(np.shape(camber_coords))
+
+            axial_coords = unit_axial * camber_coords
+            radial_coords = camber_coords - axial_coords
+            radius = np.sqrt(np.sum(radial_coords**2, 0))
+            unit_radial = radial_coords / radius
+
+
+            unit_tangential = np.cross(unit_axial, unit_radial, axisa=0, axisb=0, axisc=0)
+
+            n_ax = (camber_normals * unit_axial).sum(axis=0)
+            n_tang = (camber_normals * unit_tangential).sum(axis=0)
+            n_rad = (camber_normals * unit_radial).sum(axis=0)
+            BFM_input_file.write("<radial section>\n")
+            for i in range(n_points):
+                BFM_input_file.write("%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\n" % (
+                        camber_coords[0, i],    # Camberline axial coordinate
+                        radius[i],              # Camberline radial coordinate
+                        n_ax[i],                # Camberline normal vector in axial direction
+                        n_tang[i],              # Camberline normal vector in tangential direction
+                        n_rad[i],               # Camberline normal vector in radial direction
+                        1,                      # Blockage factor
+                        camber_coords[0, 0],    # Leading edge axial coordinate
+                        camber_coords[0, -1] - camber_coords[0, 0]  # Axial chord length
+                ))
+            BFM_input_file.write("</radial section>\n")
+        BFM_input_file.write("</tang section>\n")
+        BFM_input_file.write("</blade row>\n")
+        BFM_input_file.write("</data>\n")
+        BFM_input_file.close()
+        print("Done!")
+

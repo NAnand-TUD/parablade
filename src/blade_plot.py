@@ -145,6 +145,8 @@ class BladePlot:
         else:
             raise Exception('The number of dimensions must be 2 or 3')
 
+        if self.blade_in.BODY_FORCE:
+            self.plot_BFM_parameters()
 
     def make_tecplot_plot(self):
 
@@ -562,3 +564,70 @@ class BladePlot:
 
         # Hide axes
         plt.axis('off')
+
+    def plot_BFM_parameters(self):
+        fig = plt.figure(figsize=(8,6))
+        ax1 = fig.add_subplot(221)
+        ax2 = fig.add_subplot(222)
+        ax3 = fig.add_subplot(223)
+        ax4 = fig.add_subplot(224)
+        n_points = 20
+        n_sections = 20
+        h = 1e-5
+        u = 0.5 - 0.5*np.cos(np.linspace(0.00 + h, np.pi - h, n_points))
+        v = np.linspace(0.00 + h, 1.00 - h, n_sections)
+        axial = np.array([[1], [0], [0]])
+        axial_coordinate = np.zeros([n_sections, n_points])
+        radial_coordinate = np.zeros([n_sections, n_points])
+        camber_norm_axial = np.zeros([n_sections, n_points])
+        camber_norm_tangential = np.zeros([n_sections, n_points])
+        camber_norm_radial = np.zeros([n_sections, n_points])
+        blockage_factor = np.zeros([n_sections, n_points])
+
+        for j in range(len(v)):
+            camber_normals = np.real(self.blade_in.get_camber_normals(u=u, v=v[j]*np.ones(n_points)))
+            camber_coords = np.real(self.blade_in.get_camber_coordinates(u=u, v=v[j]*np.ones(n_points)))
+
+            unit_axial = axial * np.ones(np.shape(camber_coords))
+
+            axial_coords = unit_axial * camber_coords
+            radial_coords = camber_coords - axial_coords
+            radius = np.sqrt(np.sum(radial_coords**2, 0))
+            unit_radial = radial_coords / radius
+
+            axial_coordinate[j] = axial_coords.sum(axis=0)
+            radial_coordinate[j] = radius
+
+            unit_tangential = np.cross(unit_axial, unit_radial, axisa=0, axisb=0, axisc=0)
+
+            n_ax = (camber_normals * unit_axial).sum(axis=0)
+            n_tang = (camber_normals * unit_tangential).sum(axis=0)
+            n_rad = (camber_normals * unit_radial).sum(axis=0)
+
+            camber_norm_axial[j] = n_ax
+            camber_norm_tangential[j] = n_tang
+            camber_norm_radial[j] = n_rad
+
+            blockage_factor[j] = np.ones(np.shape(n_ax))
+        ax1.set_title("Axial camber normal")
+        camber_cntr = ax1.contourf(axial_coordinate, radial_coordinate, camber_norm_axial, vmin=-1, vmax=1, cmap='viridis')
+        ax1.set_ylabel("Radius[m]")
+        ax1.set_xticklabels([])
+        ax1.axis('equal')
+        ax2.set_title("Tangential camber normal")
+        ax2.contourf(axial_coordinate, radial_coordinate, camber_norm_tangential, vmin=-1, vmax=1)
+        ax2.set_yticklabels([])
+        ax2.set_xticklabels([])
+        ax2.axis('equal')
+        ax3.set_title("Radial camber normal")
+        ax3.contourf(axial_coordinate, radial_coordinate, camber_norm_radial, vmin=-1, vmax=1)
+        ax3.set_xlabel("Axial coordinate[m]")
+        ax3.set_ylabel("Radius[m]")
+        ax3.axis('equal')
+        ax4.set_title("Metal blockage factor")
+        cntr_blockage = ax4.contourf(axial_coordinate, radial_coordinate, blockage_factor, vmin=0, vmax=1, cmap='Greys')
+        ax4.set_xlabel("Axial coordinate[m]")
+        ax4.set_yticklabels([])
+        ax4.axis('equal')
+        plt.subplots_adjust(wspace=0)
+        plt.colorbar(camber_cntr)
