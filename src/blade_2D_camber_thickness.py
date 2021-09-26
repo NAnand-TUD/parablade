@@ -148,6 +148,8 @@ class Blade2DCamberThickness:
         self.make_upper_side()
         self.make_lower_side()
 
+        X_upper = self.get_upper_side_coordinates(np.linspace(0, 1, 200))
+        X_lower = self.get_lower_side_coordinates(np.linspace(0, 1, 200))
 
     # ---------------------------------------------------------------------------------------------------------------- #
     # Compute the coodinates of the blade section

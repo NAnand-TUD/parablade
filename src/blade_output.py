@@ -29,6 +29,7 @@ import pdb
 import time
 import copy
 import numpy as np
+from numpy.core.shape_base import block
 
 #----------------------------------------------------------------------------------------------------------------------#
 # Define BladeOutput class
@@ -301,7 +302,7 @@ class BladeOutput:
         axial = np.array([[1], [0], [0]])
         n_points = 100
         n_sections = self.blade_in.N_SECTIONS
-        h = 1e-5
+        h = 1e-7
         u = 0.5 - 0.5*np.cos(np.linspace(0.00 + h, np.pi - h, n_points))
         v = np.linspace(0.00 + h, 1.00 - h, n_sections)
         print('Writing BFM input file...', end='                        ')
@@ -334,7 +335,7 @@ class BladeOutput:
         for j in range(len(v)):
             camber_normals = np.real(self.blade_in.get_camber_normals(u=u, v=v[j]*np.ones(n_points)))
             camber_coords = np.real(self.blade_in.get_camber_coordinates(u=u, v=v[j]*np.ones(n_points)))
-
+            blockage_factor = np.real(self.blade_in.get_blockage_factor(u=u, v=v[j]*np.ones(n_points)))
             unit_axial = axial * np.ones(np.shape(camber_coords))
 
             axial_coords = unit_axial * camber_coords
@@ -350,13 +351,14 @@ class BladeOutput:
             n_rad = (camber_normals * unit_radial).sum(axis=0)
             BFM_input_file.write("<radial section>\n")
             for i in range(n_points):
+                b = min(blockage_factor[i], 1.0)
                 BFM_input_file.write("%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\t%+.11e\n" % (
                         camber_coords[0, i],    # Camberline axial coordinate
                         radius[i],              # Camberline radial coordinate
                         n_ax[i],                # Camberline normal vector in axial direction
                         n_tang[i],              # Camberline normal vector in tangential direction
                         n_rad[i],               # Camberline normal vector in radial direction
-                        1,                      # Blockage factor
+                        b,                      # Blockage factor
                         camber_coords[0, 0],    # Leading edge axial coordinate
                         camber_coords[0, -1] - camber_coords[0, 0]  # Axial chord length
                 ))

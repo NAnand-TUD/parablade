@@ -50,6 +50,7 @@ try:
     import matplotlib as mpl
     import matplotlib.pyplot as plt
     from mpl_toolkits.mplot3d import Axes3D
+    from mpl_toolkits.axes_grid1 import make_axes_locatable
 except:
     pass
 
@@ -566,14 +567,14 @@ class BladePlot:
         plt.axis('off')
 
     def plot_BFM_parameters(self):
-        fig = plt.figure(figsize=(8,6))
+        fig = plt.figure(figsize=(10, 10))
         ax1 = fig.add_subplot(221)
         ax2 = fig.add_subplot(222)
         ax3 = fig.add_subplot(223)
         ax4 = fig.add_subplot(224)
         n_points = 20
         n_sections = 20
-        h = 1e-5
+        h = 1e-7
         u = 0.5 - 0.5*np.cos(np.linspace(0.00 + h, np.pi - h, n_points))
         v = np.linspace(0.00 + h, 1.00 - h, n_sections)
         axial = np.array([[1], [0], [0]])
@@ -608,26 +609,47 @@ class BladePlot:
             camber_norm_tangential[j] = n_tang
             camber_norm_radial[j] = n_rad
 
-            blockage_factor[j] = np.ones(np.shape(n_ax))
+            blockage_factor[j] = np.real(self.blade_in.get_blockage_factor(u=u, v=v[j]*np.ones(n_points)))
         ax1.set_title("Axial camber normal")
-        camber_cntr = ax1.contourf(axial_coordinate, radial_coordinate, camber_norm_axial, vmin=-1, vmax=1, cmap='viridis')
+        camber_cntr = ax1.contourf(axial_coordinate, radial_coordinate, camber_norm_axial, cmap='viridis', levels=100)
         ax1.set_ylabel("Radius[m]")
         ax1.set_xticklabels([])
         ax1.axis('equal')
+        divider = make_axes_locatable(ax1)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        cbar_axial = fig.colorbar(camber_cntr, cax=cax, orientation='vertical')
+        cbar_axial.set_label(r'$n_x[-]$', fontsize=15)
+
         ax2.set_title("Tangential camber normal")
-        ax2.contourf(axial_coordinate, radial_coordinate, camber_norm_tangential, vmin=-1, vmax=1)
+        tang_cntr = ax2.contourf(axial_coordinate, radial_coordinate, camber_norm_tangential, levels=100)
         ax2.set_yticklabels([])
         ax2.set_xticklabels([])
         ax2.axis('equal')
+        divider = make_axes_locatable(ax2)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        cbar_tangential = fig.colorbar(tang_cntr, cax=cax, orientation='vertical')
+        cbar_tangential.set_label(r'$n_\theta[-]$', fontsize=15)
+
         ax3.set_title("Radial camber normal")
-        ax3.contourf(axial_coordinate, radial_coordinate, camber_norm_radial, vmin=-1, vmax=1)
+        radial_cntr = ax3.contourf(axial_coordinate, radial_coordinate, camber_norm_radial, levels=100)
         ax3.set_xlabel("Axial coordinate[m]")
         ax3.set_ylabel("Radius[m]")
         ax3.axis('equal')
+
+        divider = make_axes_locatable(ax3)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        cbar_radial = fig.colorbar(radial_cntr, cax=cax, orientation='vertical')
+        cbar_radial.set_label(r'$n_r[-]$', fontsize=15)
+
         ax4.set_title("Metal blockage factor")
-        cntr_blockage = ax4.contourf(axial_coordinate, radial_coordinate, blockage_factor, vmin=0, vmax=1, cmap='Greys')
+        cntr_blockage = ax4.contourf(axial_coordinate, radial_coordinate, blockage_factor, levels=100)
         ax4.set_xlabel("Axial coordinate[m]")
         ax4.set_yticklabels([])
         ax4.axis('equal')
-        plt.subplots_adjust(wspace=0)
-        plt.colorbar(camber_cntr)
+
+        divider = make_axes_locatable(ax4)
+        cax = divider.append_axes('right', size='5%', pad=0.05)
+        cbar_blockage = fig.colorbar(cntr_blockage, cax=cax, orientation='vertical')
+        cbar_blockage.set_label(r'$b[-]$', fontsize=15)
+
+        plt.tight_layout(pad=5.0, w_pad=None, h_pad=None)

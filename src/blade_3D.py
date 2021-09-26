@@ -29,8 +29,10 @@ import pdb
 import time
 import copy
 import numpy as np
+from numpy.core.shape_base import block
+from numpy.lib.index_tricks import ix_
 import scipy.integrate as integrate
-
+from scipy.interpolate import interp1d, interp2d
 
 #---------------------------------------------------------------------------------------------#
 # Setting Environment
@@ -214,6 +216,7 @@ class Blade3D:
 
     BODY_FORCE                  = False
     camberline_interpolant      = None
+    blockage_interpolant        = None
     camber_coordinates          = None
     camber_normals              = None
 
@@ -258,6 +261,8 @@ class Blade3D:
         if self.BODY_FORCE:
             print("Making camberline interpolant")
             self.make_camber_interpolant(interp_method='bilinear')
+            print("Making blockage factor interpolant")
+            self.make_blockage_interpolant(interp_method='bilinear')
 
     # ---------------------------------------------------------------------------------------------------------------- #
     # Generate the blade geometry and/or sensitities
@@ -483,13 +488,13 @@ class Blade3D:
 
         # Compute the coordinates of several blade sections
         # The (u,v) parametrization used to compute the blade sections must be regular (necessary for interpolation)
+
         num_points_section = 500
         u_interp = np.linspace(0.00, 1, num_points_section)
         v_interp = np.linspace(0.00, 1, self.N_SECTIONS)
         S_interp = np.zeros((3, num_points_section, self.N_SECTIONS), dtype=complex)
         for k in range(self.N_SECTIONS):
             S_interp[..., k] = self.get_section_coordinates(u_interp, v_interp[k])
-
         # Create the interpolator objects for the (x,y,z) coordinates
         if interp_method == 'bilinear':
             x_function = BilinearInterpolation(u_interp, v_interp, S_interp[0, ...])
@@ -507,6 +512,58 @@ class Blade3D:
 
         # Create the surface interpolant using a lambda function to combine the (x,y,z) interpolants
         self.surface_interpolant = lambda u, v: np.asarray((x_function(u, v), y_function(u, v), z_function(u, v)))
+
+    def make_upper_lower_surface_interpolant(self, interp_method='bilinear'):
+        # Update the geometry before creating the interpolant
+        self.get_DVs_functions()            # First update the functions that return design variables
+        self.make_meridional_channel()      # Then update the functions that return the meridional channel coordinates
+
+        # Compute the coordinates of several blade sections
+        # The (u,v) parametrization used to compute the blade sections must be regular (necessary for interpolation)
+
+        num_points_section = 500
+        u_interp = np.linspace(0.00, 1, num_points_section)
+        v_interp = np.linspace(0.00, 1, self.N_SECTIONS)
+        S_interp_upper = np.zeros((3, num_points_section, self.N_SECTIONS), dtype=complex)
+        S_interp_lower = np.zeros((3, num_points_section, self.N_SECTIONS), dtype=complex)
+        for k in range(self.N_SECTIONS):
+            X_upper, X_lower = self.get_upper_lower_side_coordinates(u_interp, v_interp[k])
+            S_interp_lower[..., k] = X_lower
+            S_interp_upper[..., k] = X_upper
+
+        x_upper = S_interp_upper[0, ...]
+        y_upper = S_interp_upper[1, ...]
+        z_upper = S_interp_upper[2, ...]
+        radius_upper = np.sqrt(y_upper**2 + z_upper**2)
+        theta_upper = np.arctan(y_upper / z_upper)
+
+        x_lower = S_interp_lower[0, ...]
+        y_lower = S_interp_lower[1, ...]
+        z_lower = S_interp_lower[2, ...]
+        radius_lower = np.sqrt(y_lower**2 + z_lower**2)
+        theta_lower = np.arctan(y_lower / z_lower)
+
+        # Create the interpolator objects for the (x,y,z) coordinates
+        if interp_method == 'bilinear':
+            theta_function_upper = BilinearInterpolation(u_interp, v_interp, y_upper)
+            theta_function_lower = BilinearInterpolation(u_interp, v_interp, y_lower)
+            x_function_upper = BilinearInterpolation(u_interp, v_interp, x_upper)
+            radius_function_upper = BilinearInterpolation(u_interp, v_interp, z_upper)
+            x_function_lower = BilinearInterpolation(u_interp, v_interp, x_lower)
+            radius_function_lower = BilinearInterpolation(u_interp, v_interp, z_lower)
+
+        elif interp_method == 'bicubic':
+            # There seems to be a problem with bicubic interpolation, the output is wiggly
+            theta_function_upper = BicubicInterpolation(x_upper, radius_upper, theta_upper)
+            theta_function_lower = BicubicInterpolation(x_lower, radius_lower, theta_lower)
+
+        else:
+            raise Exception('Choose a valid interpolation method: "bilinear" or "bicubic"')
+        # Create the surface interpolant using a lambda function to combine the (x,y,z) interpolants
+        upper_surface_interpolant = lambda u, v: np.asarray((x_function_upper(u, v), theta_function_upper(u, v), radius_function_upper(u, v)))
+        lower_surface_interpolant = lambda u, v: np.asarray((x_function_lower(u, v), theta_function_lower(u, v), radius_function_lower(u, v)))
+        
+        return [upper_surface_interpolant, lower_surface_interpolant]
 
     def make_camber_interpolant(self, interp_method='bilinear'):
         # Update the geometry before creating the interpolant
@@ -539,6 +596,107 @@ class Blade3D:
 
         # Create the surface interpolant using a lambda function to combine the (x,y,z) interpolants
         self.camberline_interpolant = lambda u, v: np.asarray((x_function(u, v), y_function(u, v), z_function(u, v)))
+
+    def make_blockage_interpolant(self, interp_method="bilinear"):
+
+        """ Create an interpolant for the metal blockage factor using the coordinates of several blade sections
+
+        The interpolant created by this method is used by blade_output.py to evaluate the blade metal blockage
+        factor for any input (u,v) parametrization
+
+        """
+
+        # The (u,v) parametrization used to compute the blade sections must be regular (necessary for interpolation)
+        num_points_section = 500
+        h = 1e-8
+        u_interp = np.linspace(0.0+h, 1-h, num_points_section)
+        v_interp = np.linspace(0.00+h, 1-h, self.N_SECTIONS)
+        
+        # Preparing data array for the blockage factor calculated for the (u,v) parameterization
+        blockage_query = np.zeros((self.N_SECTIONS, num_points_section))
+
+        # Looping over the span-wise blade sections
+        for iSection in range(self.N_SECTIONS):
+
+            # Getting the camberline coordinates
+            X_camber = np.real(self.camberline_interpolant(u_interp, v_interp[iSection]*np.ones(np.shape(u_interp))))
+
+            # Getting the blade surface coordinates
+            X_section = np.real(self.get_surface_coordinates(u_interp, v_interp[iSection]*np.ones(np.shape(u_interp))))
+            x_section = X_section[0, :]
+            y_section = X_section[1, :]
+            z_section = X_section[2, :]
+
+            # Calculating the camber line radius
+            radius_camber = np.sqrt(X_camber[1, :]**2 + X_camber[2, :]**2)
+            
+            # Finding leading and trailing edge indices
+            i_min = np.argmin(x_section)
+            i_max = np.argmax(x_section)
+
+            # Making arrays of lower and upper surface coordinates based on leading and trailing edge indices
+            if i_min < i_max:
+
+                x_down = x_section[i_min:i_max+1]
+                y_down = y_section[i_min:i_max+1]
+                z_down = z_section[i_min:i_max+1]
+                x_up = np.append(x_section[i_max:], x_section[:i_min + 1])
+                y_up = np.append(y_section[i_max:], y_section[:i_min + 1])
+                z_up = np.append(z_section[i_max:], z_section[:i_min + 1])
+            else:
+                x_down = np.append(x_section[i_min:], x_section[:i_max+1])
+                y_down = np.append(y_section[i_min:], y_section[:i_max + 1])
+                z_down = np.append(z_section[i_min:], z_section[:i_max + 1])
+                x_up = x_section[i_max:i_min+1]
+                y_up = y_section[i_max:i_min + 1]
+                z_up = z_section[i_max:i_min + 1]
+
+            # Computing the tangential angle of the upper and lower blade surface
+            theta_up = np.arctan(y_up/z_up)
+            radius_up = np.sqrt(y_up**2 + z_up**2)
+            theta_down = np.arctan(y_down/z_down)
+            radius_down = np.sqrt(y_down**2 + z_down**2)
+
+            # Multiplying the tangential angle with the radius
+            rtheta_up = radius_up*theta_up
+            rtheta_down = radius_down*theta_down
+
+            # Getting the indices of the upper and lower surfaces that lie closest 
+            # to the blade leading and trailing edge
+            ix_LE_up = np.argmin((x_up - min(X_camber[0, :]))**2)
+            ix_LE_down = np.argmin((x_down - min(X_camber[0, :]))**2)
+            ix_TE_up = np.argmin((x_up - max(X_camber[0, :]))**2)
+            ix_TE_down = np.argmin((x_down - max(X_camber[0, :]))**2)
+            
+            # Expanding the upper and lower data arrays to the blade leading and trailing edge
+            x_up = np.concatenate(([min(X_camber[0, :])], x_up, [max(X_camber[0, :])]))
+            x_down = np.concatenate(([min(X_camber[0, :])], x_down, [max(X_camber[0, :])]))
+            rtheta_up = np.concatenate(([rtheta_up[ix_LE_up]], rtheta_up, [rtheta_up[ix_TE_up]]))
+            rtheta_down = np.concatenate(([rtheta_down[ix_LE_down]], rtheta_down, [rtheta_down[ix_TE_down]]))
+
+            # Defining 1D interpolants for the pitch-wise distances of the upper and lower blade surface
+            rtheta_up_interpolant = interp1d(x_up, rtheta_up, fill_value="extrapolate")
+            rtheta_down_interpolant = interp1d(x_down, rtheta_down, fill_value="extrapolate")
+            
+            # Getting the tangential coordinates of the upper and lower blade surfaces along the axial
+            # direction.
+            rtheta_up_interpolated = rtheta_up_interpolant(X_camber[0, :])
+            rtheta_down_interpolated = rtheta_down_interpolant(X_camber[0, :])
+
+            # Blade pitch
+            pitch = 2*np.pi*radius_camber/self.N_BLADES
+
+            # Computing the metal blockage factor distribution of the current blade section
+            blockage_factor = np.clip((pitch - (rtheta_up_interpolated - rtheta_down_interpolated))/pitch, 0, 1)
+
+            # Storing metal blockage factor in data array
+            blockage_query[iSection, :] = blockage_factor
+
+
+        # Defining bilinear interpolant for the metal blockage factor
+        b_function = BilinearInterpolation(u_interp, v_interp, np.transpose(blockage_query))
+
+        self.blockage_interpolant = lambda u, v: np.asarray(b_function(u, v))
 
     def make_meridional_channel(self):
 
@@ -652,6 +810,69 @@ class Blade3D:
 
         return section_coordinates
 
+    def get_upper_lower_side_coordinates(self, u_section, v_section):
+        # Get the design variables of the current blade section
+        section_variables = {}
+        for k in self.DVs_names_2D:
+            section_variables[k] = self.DVs_functions[k](v_section)
+
+        # Compute the coordinates of a blade section with an unitary meridional chord
+        
+        upper_side_coordinates = Blade2DCamberThickness(section_variables).get_upper_side_coordinates(u_section)
+        lower_side_coordinates = Blade2DCamberThickness(section_variables).get_lower_side_coordinates(u_section)
+        
+        # Rename the section coordinates
+        x_upper = upper_side_coordinates[0, :]                   # x corresponds to the meridional direction
+        y_upper = upper_side_coordinates[1, :]                   # y corresponds to the tangential direction
+        x_lower = lower_side_coordinates[0, :]                   # x corresponds to the meridional direction
+        y_lower = lower_side_coordinates[1, :]                   # y corresponds to the tangential direction
+
+        # Ensure that the x-coordinates are between zero and one (actually between zero+eps and one-eps)
+        uu_section_upper = (x_upper - np.amin(x_upper) + 1e-12)/(np.amax(x_upper) - np.amin(x_upper) + 2e-12)
+        uu_section_lower = (x_lower - np.amin(x_lower) + 1e-12)/(np.amax(x_lower) - np.amin(x_lower) + 2e-12)
+
+        # Obtain the x-z coordinates by transfinite interpolation of the meridional channel contour
+        x_lower = self.get_meridional_channel_x(uu_section_lower, v_section)       # x corresponds to the axial direction
+        z_lower = self.get_meridional_channel_z(uu_section_lower, v_section)       # x corresponds to the radial direction
+        x_upper = self.get_meridional_channel_x(uu_section_upper, v_section)       # x corresponds to the axial direction
+        z_upper = self.get_meridional_channel_z(uu_section_upper, v_section)       # x corresponds to the radial direction
+
+        # Create a single-variable function with the coordinates of the meridional channel
+        x_func = lambda u: self.get_meridional_channel_x(u, v_section)
+        z_func = lambda u: self.get_meridional_channel_z(u, v_section)
+        m_func = lambda u: np.concatenate((x_func(u), z_func(u)), axis=0)
+
+        # Compute the arc length of the meridional channel (streamline)
+        arc_length = get_arc_length(m_func, 0.0 + 1e-6, 1.0 - 1e-6)
+
+        # Compute the y-coordinates of the current blade section by scaling the unitary blade
+        y_upper = self.DVs_functions["y_leading"](v_section) + y_upper * arc_length
+        y_lower = self.DVs_functions["y_leading"](v_section) + y_lower * arc_length
+
+        # Transform the blade coordinates to cartesian coordinates
+        if self.CASCADE_TYPE == "LINEAR":
+            X_UPPER = x_upper
+            Y_UPPER = y_upper
+            Z_UPPER = z_upper
+            X_LOWER = x_lower
+            Y_LOWER = y_lower
+            Z_LOWER = z_lower
+        elif self.CASCADE_TYPE == "ANNULAR":
+            X_UPPER = x_upper
+            Y_UPPER = z_upper*np.sin(y_upper/z_upper)
+            Z_UPPER = z_upper*np.cos(y_upper/z_upper)
+            X_LOWER = x_lower
+            Y_LOWER = z_lower*np.sin(y_lower/z_lower)
+            Z_LOWER = z_upper*np.cos(y_lower/z_lower)
+            
+        else:
+            raise Exception('Choose a valid cascade type: "LINEAR" or "ANNULAR"')
+        # Piece together the X-Y-Z coordinates
+        upper_side_coordinates = np.concatenate((X_UPPER, Y_UPPER, Z_UPPER), axis=0)
+        lower_side_coordinates = np.concatenate((X_LOWER, Y_LOWER, Z_LOWER), axis=0)
+        
+        return [upper_side_coordinates, lower_side_coordinates]
+
     def get_camber_coordinates(self, u, v):
         # Check that the query (u,v) parametrization is within the interpolation range
         if np.any(u < 0) or np.any(u > 1) or np.any(v < 0) or np.any(v > 1):
@@ -661,6 +882,16 @@ class Blade3D:
         camber_coordinates = self.camberline_interpolant(u, v)
 
         return camber_coordinates
+
+    def get_blockage_factor(self, u, v):
+        # Check that the query (u,v) parametrization is within the interpolation range
+        if np.any(u < 0) or np.any(u > 1) or np.any(v < 0) or np.any(v > 1):
+            raise ValueError('Extrapolation of the (u,v) parametrization is not supported')
+
+        # Compute the surface coordinates by interpolation
+        blockage_factor = self.blockage_interpolant(u, v)
+
+        return blockage_factor
 
     def get_camberline_coordinates(self, u_section, v_section):
 
@@ -799,6 +1030,16 @@ class Blade3D:
 
         return camber_normals
 
+    def get_blockage_factor(self, u, v):
+        # Check that the query (u,v) parametrization is within the interpolation range
+        if np.any(u < 0) or np.any(u > 1) or np.any(v < 0) or np.any(v > 1):
+            raise ValueError('Extrapolation of the (u,v) parametrization is not supported')
+
+        # Compute the surface coordinates by interpolation
+        blockage_factor = self.blockage_interpolant(u, v)
+
+        return blockage_factor
+            
     # ---------------------------------------------------------------------------------------------------------------- #
     # Compute the unitary vectors normal to the blade surface
     # ---------------------------------------------------------------------------------------------------------------- #
