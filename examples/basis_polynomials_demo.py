@@ -7,18 +7,15 @@
 # -------------------------------------------------------------------------------------------------------------------- #
 import sys
 import os
-import time
-import pdb
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
-sys.path.append(os.getcwd() + '/../')
-from CAD_functions import BSplineCurve
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.CAD_functions import BSplineCurve
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

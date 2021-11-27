@@ -26,28 +26,21 @@
 #---------------------------------------------------------------------------------------------#
 import sys
 import os
-import time
-import pdb
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
 
 #---------------------------------------------------------------------------------------------#
 # Setting Environment
 #---------------------------------------------------------------------------------------------#
-BLADE_HOME = os.environ["BLADE_HOME"]
-sys.path.append(BLADE_HOME+'/src/')
-sys.path.append(BLADE_HOME+'/common/')
+sys.path.append(os.getcwd() + '/../parablade')
 
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from common import PrintBanner
-from config import *
-from blade_3D import Blade3D
-from blade_plot import BladePlot
-from blade_match import BladeMatch
-from blade_output import BladeOutput
+from parablade.common import PrintBanner
+from parablade.common.config import *
+from parablade.blade_3D import Blade3D
+from parablade.blade_plot import BladePlot
+from parablade.blade_match import BladeMatch
+from parablade.blade_output import BladeOutput
 
 #---------------------------------------------------------------------------------------------#
 # Print ParaBlade Banner

@@ -7,21 +7,16 @@
 # -------------------------------------------------------------------------------------------------------------------- #
 import os
 import sys
-import pdb
-import time
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FormatStrFormatter
-from mpl_toolkits.mplot3d import Axes3D
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
-sys.path.append(os.getcwd() + '/../')
-from CAD_functions import BSplineCurve
-from interpolation_functions import TransfiniteInterpolation
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.CAD_functions import BSplineCurve
+from parablade.interpolation_functions import TransfiniteInterpolation
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

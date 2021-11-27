@@ -7,8 +7,6 @@
 #----------------------------------------------------------------------------------------------------------------------#
 import sys
 import os
-import time
-import pdb
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -16,8 +14,8 @@ import matplotlib.pyplot as plt
 #----------------------------------------------------------------------------------------------------------------------#
 # Importing user-defined packages
 #----------------------------------------------------------------------------------------------------------------------#
-sys.path.append(os.getcwd() + '/../')
-from blade_2D_connecting_arcs import Blade2DConnectingArcs
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.blade_2D_connecting_arcs import Blade2DConnectingArcs
 
 
 #----------------------------------------------------------------------------------------------------------------------#

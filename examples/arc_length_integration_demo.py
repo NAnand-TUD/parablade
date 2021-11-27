@@ -7,20 +7,15 @@
 # -------------------------------------------------------------------------------------------------------------------- #
 import os
 import sys
-import pdb
-import time
 import numpy as np
-import scipy.integrate as integrate
-import matplotlib as mpl
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
-sys.path.append(os.getcwd() + '/../')
-from CAD_functions import get_arc_length
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.CAD_functions import get_arc_length
 
 
 # -------------------------------------------------------------------------------------------------------------------- #

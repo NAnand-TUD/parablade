@@ -35,18 +35,16 @@ import time
 #---------------------------------------------------------------------------------------------#
 # Setting Environment
 #---------------------------------------------------------------------------------------------#
-BLADE_HOME = os.environ["BLADE_HOME"]
-sys.path.append(BLADE_HOME+'/src/')
-sys.path.append(BLADE_HOME+'/common/')
+sys.path.append(os.getcwd() + '/../parablade')
 
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from common.common import *
-from common.config import *
-from src.blade_3D import Blade3D
-from src.blade_plot import BladePlot
-from src.blade_output import BladeOutput
+from parablade.common.common import *
+from parablade.common.config import *
+from parablade.blade_3D import Blade3D
+from parablade.blade_plot import BladePlot
+from parablade.blade_output import BladeOutput
 
 #---------------------------------------------------------------------------------------------#
 # Print ParaBlade Banner
