@@ -43,9 +43,9 @@ import warnings
 #---------------------------------------------------------------------------------------------#
 # Importing user-defined packages
 #---------------------------------------------------------------------------------------------#
-from src.blade_3D import Blade3D
-from common.common import printProgress
-from common.config import ReadUserInput, WriteBladeConfigFile
+from parablade.blade_3D import Blade3D
+from parablade.common.common import printProgress
+from parablade.common.config import ReadUserInput, WriteBladeConfigFile
 
 
 #---------------------------------------------------------------------------------------------#

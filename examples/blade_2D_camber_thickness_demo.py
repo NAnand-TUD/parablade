@@ -7,18 +7,15 @@
 #----------------------------------------------------------------------------------------------------------------------#
 import sys
 import os
-import time
-import pdb
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 
 
 #----------------------------------------------------------------------------------------------------------------------#
 # Importing user-defined packages
 #----------------------------------------------------------------------------------------------------------------------#
-sys.path.append(os.getcwd() + '/../')
-from blade_2D_camber_thickness import Blade2DCamberThickness
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.blade_2D_camber_thickness import Blade2DCamberThickness
 
 
 #----------------------------------------------------------------------------------------------------------------------#

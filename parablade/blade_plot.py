@@ -31,16 +31,12 @@ import copy
 import numpy as np
 
 
-#---------------------------------------------------------------------------------------------#
-# Setting Environment
-#---------------------------------------------------------------------------------------------#
-BLADE_HOME = os.environ["BLADE_HOME"]
 
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from common.config import ReadUserInput
-from src.blade_3D import Blade3D
+from parablade.common.config import ReadUserInput
+from parablade.blade_3D import Blade3D
 
 
 #----------------------------------------------------------------------------------------------------------------------#

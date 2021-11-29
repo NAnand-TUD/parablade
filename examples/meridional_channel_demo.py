@@ -7,8 +7,6 @@
 # -------------------------------------------------------------------------------------------------------------------- #
 import sys
 import os
-import time
-import pdb
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -17,9 +15,9 @@ import matplotlib.pyplot as plt
 # -------------------------------------------------------------------------------------------------------------------- #
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
-sys.path.append(os.getcwd() + '/../')
-from CAD_functions import BSplineCurve
-from interpolation_functions import TransfiniteInterpolation
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.CAD_functions import BSplineCurve
+from parablade.interpolation_functions import TransfiniteInterpolation
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Meridional channel parametrization

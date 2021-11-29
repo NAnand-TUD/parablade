@@ -32,20 +32,16 @@ import numpy as np
 import scipy.integrate as integrate
 
 
-#---------------------------------------------------------------------------------------------#
-# Setting Environment
-#---------------------------------------------------------------------------------------------#
-BLADE_HOME = os.environ["BLADE_HOME"]
 
 #---------------------------------------------------------------------------------------------#
 # Importing ParaBlade classes and functions
 #---------------------------------------------------------------------------------------------#
-from common.common import printProgress
-from common.config import ReadUserInput
-from src.CAD_functions import *
-from src.interpolation_functions import *
-from src.blade_2D_connecting_arcs import Blade2DConnectingArcs
-from src.blade_2D_camber_thickness import Blade2DCamberThickness
+from parablade.common.common import printProgress
+from parablade.common.config import ReadUserInput
+from parablade.CAD_functions import *
+from parablade.interpolation_functions import *
+from parablade.blade_2D_connecting_arcs import Blade2DConnectingArcs
+from parablade.blade_2D_camber_thickness import Blade2DCamberThickness
 
 
 #----------------------------------------------------------------------------------------------------------------------#

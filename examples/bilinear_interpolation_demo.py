@@ -7,20 +7,17 @@
 # -------------------------------------------------------------------------------------------------------------------- #
 import os
 import sys
-import pdb
 import time
 import numpy as np
-import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy.interpolate import RectBivariateSpline
-from mpl_toolkits.mplot3d import Axes3D
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
 # Importing user-defined packages
 # -------------------------------------------------------------------------------------------------------------------- #
-sys.path.append(os.getcwd() + '/../')
-from interpolation_functions import BilinearInterpolation
+sys.path.append(os.getcwd() + '/../parablade')
+from parablade.interpolation_functions import BilinearInterpolation
 
 
 # -------------------------------------------------------------------------------------------------------------------- #
