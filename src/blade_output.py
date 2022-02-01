@@ -334,6 +334,8 @@ class BladeOutput:
         BFM_input_file.write("<tang section>\n")
         for j in range(len(v)):
             camber_normals = np.real(self.blade_in.get_camber_normals(u=u, v=v[j]*np.ones(n_points)))
+            camber_normals = camber_normals / np.sqrt(np.sum(np.power(camber_normals, 2), axis=0))
+            
             camber_coords = np.real(self.blade_in.get_camber_coordinates(u=u, v=v[j]*np.ones(n_points)))
             blockage_factor = np.real(self.blade_in.get_blockage_factor(u=u, v=v[j]*np.ones(n_points)))
             unit_axial = axial * np.ones(np.shape(camber_coords))

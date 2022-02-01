@@ -237,6 +237,11 @@ class Blade3D:
         except:
             self.BODY_FORCE         = False
 
+        try:
+            self.N_points = int(IN["N_POINTS"][0])
+        except:
+            self.N_points = 100
+            
         if self.BODY_FORCE and self.PARAMETRIZATION_TYPE != 'CAMBER_THICKNESS':
             raise Exception('Body-Force Model blade parameters can only be generated with CAMBER_THICKNESS parameterization')
 
