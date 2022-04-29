@@ -16,6 +16,10 @@ ParaBlade is an open-source Python library for the parametrization of turbomachi
 
 [![DOI](https://zenodo.org/badge/268081609.svg)](https://zenodo.org/badge/latestdoi/268081609)
 
+## Disucssion Board
+
+GitHub discussion board is now open... Have a question ? Post it on the discussion board and engage with the community... 
+
 ## Install
 
 `pip install git+https://github.com/NAnand-TUD/parablade.git#egg=parablade`
