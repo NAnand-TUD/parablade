@@ -145,7 +145,7 @@ Use pip3 to install CoolProp. For more information on SciPy visit [here]
 [![Link matplotlib](https://img.shields.io/badge/Link-scipy-red.svg)](https://www.scipy.org/).
 
 ```
-sudo pip3 install scipy
+sudo pip3 install scipy~=1.3.3
 ```
 
 ### Slack Client
