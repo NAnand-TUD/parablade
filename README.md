@@ -18,7 +18,7 @@ ParaBlade is an open-source Python library for the parametrization of turbomachi
 
 ## Discussion Board
 
-GitHub discussion board is now open... Have a question ? Post it on the discussion board and engage with the community... 
+GitHub ![discussion board](https://github.com/NAnand-TUD/parablade/discussions) is now open... Have a question ? Post it on the discussion board and engage with the community...
 
 ## Install
 
@@ -186,7 +186,9 @@ and follow the instructions to add the parablade bin files in your terminal envi
 
 # Development team
 
-Parablade was developed by 
+For general comment or question regarding the code please use ![ParaBlade Discussion Board](https://github.com/NAnand-TUD/parablade/discussions)
+
+If you wish to be a contributar email Parablade developers 
 
 1. [**Roberto Agromayor**](https://www.ntnu.edu/employees/roberto.agromayor) - Postdoctoral Researcher, Norwegian University of Science and Technology (NTNU)  
 2. [**Nitish Anand**](https://www.tudelft.nl/staff/n.anand/) - Postdoctoral Researcher, Propulsion & Power, Aerospace Engineering, Delft University of Technology (TUD) 
