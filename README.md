@@ -205,6 +205,6 @@ We would also like to acknowledge the following persons for their support during
 
 # References
 
-Agromayor, R.; Anand, N.; Müller, J. D.; Pini, M.; and Nord, L. O. *A General Geometry Parametrization Method for Turbomachinery Blades* (submitted to Advances in Engineering Software).
+Agromayor, R.; Anand, N.; Müller, J. D.; Pini, M.; and Nord, L. O. *A Unified Geometry Parametrization Method for Turbomachinery Blades* CAD Journal, Volume 133, No.:102987, April 2021. [![Link Elsevier](https://www.sciencedirect.com/science/article/pii/S0010448520301809)]()
 
 
